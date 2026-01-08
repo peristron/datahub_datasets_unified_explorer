@@ -158,35 +158,85 @@ def logout():
 # =============================================================================
 
 def scrape_table(url: str, category_name: str) -> List[Dict]:
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    # 1. UPGRADE: Use browser-like headers to bypass 403/WAF blocks
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://community.d2l.com/',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    }
+    
     try:
-        response = requests.get(url, headers=headers, timeout=15, verify=False)
-        if response.status_code != 200: return []
+        # 2. UPGRADE: Use a session and strict error logging
+        session = requests.Session()
+        response = session.get(url, headers=headers, timeout=20, verify=False)
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to load {url} - Status Code: {response.status_code}")
+            return []
+            
         soup = BeautifulSoup(response.content, 'html.parser')
         data = []
         current_dataset = category_name
         
+        # 3. UPGRADE: Normalize text to catch datasets hidden in article text
         elements = soup.find_all(['h2', 'h3', 'table'])
+        
         for element in elements:
             if element.name in ['h2', 'h3']:
-                text = element.text.strip()
-                if len(text) > 3: current_dataset = text.lower()
+                text = element.get_text(strip=True)
+                # Clean up generic titles to find the actual dataset name
+                clean_text = re.sub(r'About the | data sets?', '', text, flags=re.IGNORECASE).strip()
+                if len(clean_text) > 2 and "related" not in clean_text.lower():
+                    current_dataset = clean_text
+            
             elif element.name == 'table':
-                table_headers = [th.text.strip().lower().replace(' ', '_') for th in element.find_all('th')]
-                if not table_headers or not any(x in table_headers for x in ['type', 'description', 'data_type']): continue
-                for row in element.find_all('tr'):
-                    columns_ = row.find_all('td')
-                    if len(columns_) < len(table_headers): continue
-                    entry = {table_headers[i]: columns_[i].text.strip() for i in range(len(table_headers))}
-                    header_map = {'field': 'column_name', 'name': 'column_name', 'type': 'data_type'}
-                    entry = {header_map.get(k, k): v for k, v in entry.items()}
+                # Parse headers more loosely to account for formatting inconsistencies
+                rows = element.find_all('tr')
+                if not rows: continue
+                
+                # Try to find the header row (sometimes it's <thead>, sometimes just first <tr>)
+                header_cells = rows[0].find_all(['th', 'td'])
+                table_headers = [cell.get_text(strip=True).lower().replace(' ', '_') for cell in header_cells]
+                
+                # Check if this looks like a schema table (must have name/field AND type/desc)
+                valid_indicators = ['name', 'field', 'column', 'type', 'description', 'datatype']
+                if not any(ind in h for h in table_headers for ind in valid_indicators):
+                    continue
+
+                for row in rows[1:]:
+                    columns_ = row.find_all(['td', 'th'])
+                    if len(columns_) < 2: continue # Skip empty rows
+                    
+                    entry = {}
+                    # Map columns to known keys based on index
+                    for i, col in enumerate(columns_):
+                        if i < len(table_headers):
+                            val = col.get_text(strip=True)
+                            header = table_headers[i]
+                            
+                            # Normalize header names to our schema
+                            if any(x in header for x in ['field', 'name', 'column']):
+                                entry['column_name'] = val
+                            elif any(x in header for x in ['type', 'datatype']):
+                                entry['data_type'] = val
+                            elif 'desc' in header:
+                                entry['description'] = val
+                            elif 'key' in header:
+                                entry['key'] = val
+
                     if 'column_name' in entry and entry['column_name']:
                         entry['dataset_name'] = current_dataset
                         entry['category'] = category_name
                         entry['url'] = url
                         data.append(entry)
+                        
         return data
-    except Exception: return []
+    except Exception as e:
+        logger.error(f"Scraping Error for {url}: {e}")
+        return []
 
 def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     all_data = []
