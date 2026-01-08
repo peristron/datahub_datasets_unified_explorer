@@ -1089,7 +1089,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
 def render_dashboard(df: pd.DataFrame):
     """renders the main dashboard with overview statistics."""
-    st.header("📊 Dataset Overview Dashboard")
+    st.header("📊 Datahub Datasets Overview Dashboard")
     
     is_advanced = st.session_state['experience_mode'] == 'advanced'
     
