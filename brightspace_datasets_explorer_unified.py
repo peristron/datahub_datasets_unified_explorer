@@ -1143,7 +1143,7 @@ def render_dashboard(df: pd.DataFrame):
     col_hubs, col_orphans = st.columns(2)
     
     with col_hubs:
-        st.subheader("🌟 Most Connected Datasets (Hubs)")
+        st.subheader("🌟 Most Connected Datasets ('Hubs')")
         hubs = get_hub_datasets(df, top_n=10)
         if not hubs.empty and hubs['total_connections'].sum() > 0:
             st.dataframe(
