@@ -354,27 +354,46 @@ def load_data() -> pd.DataFrame:
 @st.cache_data
 def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     """
-    calculates all possible join conditions based on pk/fk naming.
-    df_hash is used for cache invalidation.
+    Calculates join conditions.
+    Improves on strict PK/FK matching by inferring FKs if a column name matches a known PK.
     """
     if df.empty:
         return pd.DataFrame()
     
     # ensure required columns exist
-    if 'is_primary_key' not in df.columns or 'is_foreign_key' not in df.columns:
+    if 'is_primary_key' not in df.columns:
         return pd.DataFrame()
     
+    # 1. Identify definitive Primary Keys
     pks = df[df['is_primary_key'] == True]
-    fks = df[df['is_foreign_key'] == True]
+    if pks.empty:
+        return pd.DataFrame()
+
+    # 2. identify potential foreign keys
+    # logic: any column that shares a name with a known PK is a potential FK, 
+    # even if not explicitly marked as 'FK' in the documentation 
+    # filtering out the PK rows themselves to avoid self-matching the PK definition
     
-    if pks.empty or fks.empty:
+    pk_names = pks['column_name'].unique()
+    
+    # Get all columns that match a PK name but aren't the PK row itself
+    potential_fks = df[
+        (df['column_name'].isin(pk_names)) & 
+        (df['is_primary_key'] == False)
+    ]
+    
+    if potential_fks.empty:
         return pd.DataFrame()
     
-    # merge where foreign key column name matches primary key column name
-    merged = pd.merge(fks, pks, on='column_name', suffixes=('_fk', '_pk'))
+    # merge to find connections (potential_fks -> pks)
+    merged = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
     
+    # clean up
     # exclude self-joins (joining a table to itself)
     joins = merged[merged['dataset_name_fk'] != merged['dataset_name_pk']]
+    
+    # ensure distinct relationships
+    joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
     
     return joins
 
