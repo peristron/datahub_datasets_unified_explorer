@@ -545,22 +545,18 @@ def show_relationship_summary(df: pd.DataFrame, dataset_name: str):
         outgoing = 0
         incoming = 0
     else:
-        # outgoing: This dataset HAS the Foreign Key (it points TO others)
+        # Outgoing: This dataset HAS the Foreign Key (it points TO others)
         outgoing = len(joins[joins['dataset_name_fk'] == dataset_name])
-        # incoming: this dataset HAS the Primary Key (others point TO it)
+        # Incoming: This dataset HAS the Primary Key (others point TO it)
         incoming = len(joins[joins['dataset_name_pk'] == dataset_name])
     
-    # layout improvement: 
-    # uses 2 columns instead of 3 to prevent text truncation in narrow sidebars
-    # terminology improvement: "References" and "Referenced By" are clearer than "Outgoing/Incoming"
+    # layout improvements
+    # switched to vertical stacking
+    # since this function is rendered in narrow side columns, splitting it into columns 
+    # causes text truncation. Vertical stacking guarantees the labels are readable
     
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("References", outgoing, help=f"This dataset points to {outgoing} other datasets (Source)")
-    with c2:
-        st.metric("Referenced By", incoming, help=f"{incoming} other datasets point to this dataset (Target)")
-        
-    # displays total in a full-width container below to ensure it's readable
+    st.metric("References (Outgoing)", outgoing, help=f"This dataset contains {outgoing} Foreign Keys pointing to other tables.")
+    st.metric("Referenced By (Incoming)", incoming, help=f"{incoming} other tables have Foreign Keys pointing to this dataset.")
     st.metric("Total Connections", outgoing + incoming)
 # =============================================================================
 # 7. visualization engine
