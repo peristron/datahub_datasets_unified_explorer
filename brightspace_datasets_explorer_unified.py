@@ -1745,6 +1745,7 @@ def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
             
             try:
                 # build context
+                
                 if use_full_context:
                     schema_text = []
                     for ds_name, group in df.groupby('dataset_name'):
@@ -1762,16 +1763,30 @@ def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
                     context = "\n\n".join(schema_text)
                     scope_msg = "FULL DATABASE SCHEMA"
                 else:
+                    relationships_context = ""
+                    
                     if selected_datasets:
                         context_df = df[df['dataset_name'].isin(selected_datasets)]
                         scope_msg = f"SELECTED DATASETS: {', '.join(selected_datasets)}"
+                        
+                        # improved logic
+                        # to explicitly fetch the relationships we calculated earlier and feed them to the AI
+                        # prevents the AI from guessing/hallucinating joins
+                        known_joins = get_joins_for_selection(df, selected_datasets)
+                        
+                        if not known_joins.empty:
+                            relationships_context = "\n\nVERIFIED RELATIONSHIPS (Use these strictly for JOIN conditions):\n"
+                            for _, row in known_joins.iterrows():
+                                relationships_context += f"- {row['Source Dataset']} joins to {row['Target Dataset']} ON column '{row['Join Column']}'\n"
                     else:
                         context_df = df.head(100)
                         scope_msg = "SAMPLE DATA (first 100 rows)"
                     
                     cols_to_use = ['dataset_name', 'column_name', 'data_type', 'description', 'key']
                     available_cols = [c for c in cols_to_use if c in context_df.columns]
-                    context = context_df[available_cols].to_csv(index=False)
+                    
+                    # appending the explicit relationships to the CSV data
+                    context = context_df[available_cols].to_csv(index=False) + relationships_context
                 
                 system_msg = f"""You are an expert SQL Data Architect specializing in Brightspace (D2L) data sets.
                 
