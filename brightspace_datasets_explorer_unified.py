@@ -1112,12 +1112,13 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
 
 def render_dashboard(df: pd.DataFrame):
-    """renders the main dashboard with overview statistics."""
-    st.header("📊 Datahub Datasets Overview Dashboard")
+    """renders the main dashboard with overview statistics and intelligent search."""
+    st.header("📊 Datahub Datasets Overview")
     
     is_advanced = st.session_state['experience_mode'] == 'advanced'
     
-    # key metrics row
+    # --- 1. Top Metrics ---
+    # metrics row
     col1, col2, col3, col4 = st.columns(4)
     
     total_datasets = df['dataset_name'].nunique()
@@ -1134,84 +1135,158 @@ def render_dashboard(df: pd.DataFrame):
     
     st.divider()
     
-    # quick search
-    col_search, col_results = st.columns([1, 2])
+    # --- 2. Intelligent Search ---
+    st.subheader("🔍 Intelligent Search")
+    
+    # Build a search index
+    # We prefix items so the user knows if they are selecting a Table or a Column
+    all_datasets = sorted(df['dataset_name'].unique())
+    all_columns = sorted(df['column_name'].unique())
+    
+    search_index = [f"📦 {ds}" for ds in all_datasets] + [f"🔑 {col}" for col in all_columns]
+    
+    col_search, col_stats = st.columns([3, 1])
     
     with col_search:
-        st.subheader("🔍 Quick Search")
-        search_term = st.text_input("Find Column or Dataset", placeholder="e.g. OrgUnitId, Users...")
-        
-        if search_term:
-            # search in column names
-            col_matches = df[df['column_name'].str.contains(search_term, case=False, na=False)]
-            # search in dataset names
-            ds_matches = df[df['dataset_name'].str.contains(search_term, case=False, na=False)]
-            
-            combined = pd.concat([col_matches, ds_matches]).drop_duplicates()
-            
-            if not combined.empty:
-                st.success(f"Found in {combined['dataset_name'].nunique()} datasets")
-            else:
-                st.warning("No matches found")
-    
-    with col_results:
-        if search_term and not combined.empty:
-            st.subheader("Search Results")
-            display_cols = ['dataset_name', 'column_name', 'data_type', 'category']
-            available_cols = [c for c in display_cols if c in combined.columns]
-            st.dataframe(combined[available_cols].drop_duplicates(), use_container_width=True, height=250)
-    
-    st.divider()
-    
-    # hub datasets and orphans
-    col_hubs, col_orphans = st.columns(2)
-    
-    with col_hubs:
-        st.subheader("🌟 Most Connected Datasets ('Hubs')")
-        hubs = get_hub_datasets(df, top_n=10)
-        if not hubs.empty and hubs['total_connections'].sum() > 0:
-            st.dataframe(
-                hubs[['dataset_name', 'category', 'outgoing_fks', 'incoming_fks', 'total_connections']],
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("No relationship data available yet.")
-    
-    with col_orphans:
-        st.subheader("🏝️ Orphan Datasets (No Connections)")
-        orphans = get_orphan_datasets(df)
-        if orphans:
-            st.warning(f"{len(orphans)} datasets have no detected relationships")
-            if is_advanced:
-                with st.expander("View Orphan Datasets"):
-                    st.dataframe(pd.DataFrame(orphans, columns=['Dataset Name']), hide_index=True)
-        else:
-            st.success("All datasets have at least one connection!")
-    
-    # advanced: category breakdown
-    if is_advanced:
+        search_selection = st.selectbox(
+            "Search for a Dataset or Column", 
+            options=search_index,
+            index=None,
+            placeholder="Type to search (e.g. 'Users', 'OrgUnitId')...",
+            label_visibility="collapsed"
+        )
+
+    # --- 3. Search Results Logic ---
+    if search_selection:
         st.divider()
-        st.subheader("📁 Category Breakdown")
         
-        cat_stats = df.groupby('category').agg({
-            'dataset_name': 'nunique',
-            'column_name': 'count'
-        }).reset_index()
-        cat_stats.columns = ['Category', 'Datasets', 'Columns']
-        cat_stats = cat_stats.sort_values('Datasets', ascending=False)
+        # Parse the selection type
+        search_type = "dataset" if "📦" in search_selection else "column"
+        term = search_selection.split(" ", 1)[1]
         
-        col_chart, col_table = st.columns([2, 1])
+        if search_type == "dataset":
+            # --- Single Dataset View ---
+            st.markdown(f"### Results for Dataset: **{term}**")
+            
+            # Get the data
+            ds_data = df[df['dataset_name'] == term]
+            if not ds_data.empty:
+                meta = ds_data.iloc[0]
+                
+                # Render a "Hero Card" for this dataset
+                with st.container():
+                    c1, c2 = st.columns([3, 2])
+                    with c1:
+                        st.caption(f"Category: **{meta['category']}**")
+                        if meta['url']:
+                            st.markdown(f"📄 [**Official Documentation**]({meta['url']})")
+                        else:
+                            st.caption("No documentation link available.")
+                    
+                    with c2:
+                        # Reuse our improved relationship summary here!
+                        show_relationship_summary(df, term)
+                
+                # Show Schema
+                with st.expander("📋 View Schema", expanded=True):
+                    display_cols = ['column_name', 'data_type', 'description', 'key']
+                    available_cols = [c for c in display_cols if c in ds_data.columns]
+                    st.dataframe(ds_data[available_cols], hide_index=True, use_container_width=True)
+
+        else:
+            # --- Column View (List of Datasets) ---
+            st.markdown(f"### Datasets containing column: `{term}`")
+            
+            # Find all datasets containing this column
+            hits = df[df['column_name'] == term]['dataset_name'].unique()
+            
+            if len(hits) > 0:
+                st.info(f"Found **{len(hits)}** datasets containing `{term}`")
+                
+                # Render results as a grid of expandable cards
+                for ds_name in sorted(hits):
+                    ds_meta = df[df['dataset_name'] == ds_name].iloc[0]
+                    category = ds_meta['category']
+                    
+                    with st.expander(f"📦 {ds_name}  ({category})"):
+                        # Layout: Info on left, Relationships on right
+                        c_info, c_rel = st.columns([2, 1])
+                        
+                        with c_info:
+                            if ds_meta['url']:
+                                st.markdown(f"[View Documentation]({ds_meta['url']})")
+                            
+                            # Show the specific row for this column to see description/type
+                            col_row = df[(df['dataset_name'] == ds_name) & (df['column_name'] == term)]
+                            st.caption("Column Details:")
+                            st.dataframe(col_row[['data_type', 'description', 'key']], hide_index=True, use_container_width=True)
+                            
+                        with c_rel:
+                            # Mini relationship summary
+                            show_relationship_summary(df, ds_name)
+            else:
+                st.warning("Odd, this column is in the index but no datasets were found. Try reloading.")
+                
+    else:
+        # --- 4. Default Dashboard View (shown when no search) ---
+        st.divider()
+        col_hubs, col_orphans = st.columns(2)
         
-        with col_chart:
+        with col_hubs:
+            st.subheader("🌟 Most Connected Datasets ('Hubs')")
+            hubs = get_hub_datasets(df, top_n=10)
+            if not hubs.empty and hubs['total_connections'].sum() > 0:
+                # Format the table nicely
+                st.dataframe(
+                    hubs[['dataset_name', 'category', 'total_connections']],
+                    column_config={
+                        "dataset_name": "Dataset",
+                        "category": "Category",
+                        "total_connections": st.column_config.ProgressColumn(
+                            "Connections", 
+                            help="Total incoming and outgoing relationships",
+                            format="%d",
+                            min_value=0,
+                            max_value=int(hubs['total_connections'].max())
+                        )
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No relationship data available yet.")
+        
+        with col_orphans:
+            st.subheader("🏝️ Orphan Datasets")
+            orphans = get_orphan_datasets(df)
+            if orphans:
+                st.warning(f"{len(orphans)} datasets have no detected relationships")
+                if is_advanced:
+                    with st.expander("View Orphan Datasets"):
+                        st.dataframe(pd.DataFrame(orphans, columns=['Dataset Name']), hide_index=True)
+            else:
+                st.success("All datasets have at least one connection!")
+        
+        # --- 5. Category Chart (Advanced Only) ---
+        if is_advanced:
+            st.divider()
+            st.subheader("📁 Category Breakdown")
+            
+            cat_stats = df.groupby('category').agg({
+                'dataset_name': 'nunique',
+                'column_name': 'count'
+            }).reset_index()
+            cat_stats.columns = ['Category', 'Datasets', 'Columns']
+            cat_stats = cat_stats.sort_values('Datasets', ascending=False)
+            
             fig = px.bar(cat_stats, x='Category', y='Datasets', color='Columns',
                         title="Datasets per Category", color_continuous_scale='Blues')
             st.plotly_chart(fig, use_container_width=True)
-        
+            
         with col_table:
             st.dataframe(cat_stats, use_container_width=True, hide_index=True)
     
-    # path finder (advanced mode)
+    # --- 6. Path Finder (Advanced Only) ---
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
