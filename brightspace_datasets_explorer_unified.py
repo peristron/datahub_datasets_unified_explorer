@@ -644,6 +644,112 @@ def create_spring_graph(
                 y=(y0 + y1) / 2, 
                 text=edge[2].get('label', ''), 
                 showarrow=False, 
+                # styling improvement
+                # larger font size (max(10, ...))
+                # background box (bgcolor) to hide line behind text
+                # mtches UI color (#58A6FF)
+                font=dict(color="#58A6FF", size=max(10, graph_font_size - 1), family="monospace"),
+                bgcolor="#1E232B",
+                borderpad=2,
+                opacity=0.9
+            ))
+    
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y, 
+        line=dict(width=1.5, color='#666'), 
+        hoverinfo='none', 
+        mode='lines'
+    )
+    
+    # build node traces with category colors
+    categories = df['category'].unique().tolist()
+    cat_colors = get_category_colors(categories)
+    
+    node_x = []
+    node_y = []
+    node_text = []
+    node_color = []
+    node_hover = []
+    node_size = []
+    node_symbol = []
+    node_line_color = []
+    node_line_width = []
+    
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        
+        node_type = G.nodes[node].get('type', 'focus')
+        category = df[df['dataset_name'] == node]['category'].iloc[0] if not df[df['dataset_name'] == node].empty else 'unknown'
+        node_color.append(cat_colors.get(category, '#ccc'))
+        node_hover.append(f"<b>{node}</b><br>Category: {category}<br>Type: {node_type.title()}")
+        
+        if node_type == 'focus':
+            node_size.append(40)
+            node_symbol.append('square')
+            node_text.append(f'<b>{node}</b>')
+            node_line_color.append('white')
+            node_line_width.append(3)
+        else:
+            node_size.append(20)
+            node_symbol.append('circle')
+            node_text.append(node)
+            node_line_color.append('gray')
+            node_line_width.append(1)
+    
+    node_trace = go.Scatter(
+        x=node_x, y=node_y, 
+        mode='markers+text',
+        hoverinfo='text', 
+        hovertext=node_hover,
+        text=node_text, 
+        textposition="top center", 
+        textfont=dict(size=graph_font_size, color='#fff'),
+        marker=dict(
+            showscale=False, 
+            color=node_color, 
+            size=node_size, 
+            symbol=node_symbol,
+            line=dict(color=node_line_color, width=node_line_width)
+        )
+    )
+    
+    fig = go.Figure(
+        data=[edge_trace, node_trace],
+        layout=go.Layout(
+            showlegend=False, 
+            hovermode='closest', 
+            margin=dict(b=20, l=5, r=5, t=40),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            paper_bgcolor='#1e1e1e', 
+            plot_bgcolor='#1e1e1e',
+            annotations=annotations, 
+            height=graph_height
+        )
+    )
+    return fig
+    
+    # calculate positions
+    pos = nx.spring_layout(G, k=node_separation, iterations=50)
+    
+    # build edge traces
+    edge_x = []
+    edge_y = []
+    annotations = []
+    
+    for edge in G.edges(data=True):
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+        if show_edge_labels:
+            annotations.append(dict(
+                x=(x0 + x1) / 2, 
+                y=(y0 + y1) / 2, 
+                text=edge[2].get('label', ''), 
+                showarrow=False, 
                 font=dict(color="cyan", size=max(8, graph_font_size - 4))
             ))
     
