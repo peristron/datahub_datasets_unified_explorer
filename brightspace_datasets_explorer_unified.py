@@ -1526,9 +1526,37 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                 node_separation = 0.9
         
         if not selected_datasets:
-            st.info("👈 Select datasets from the sidebar to visualize their relationships.")
+            st.info("👈 Select datasets...")
         else:
-            mode = 'focused' if 'Focused' in graph_mode else 'discovery'
+            # checks for disconnected components in selection
+            if len(selected_datasets) > 1 and mode == 'focused':
+                # quick check: enough edges to connect them?
+                current_joins = get_joins_for_selection(df, selected_datasets)
+                if current_joins.empty:
+                    st.warning("⚠️ These datasets don't connect directly. You might be missing a 'bridge' table.")
+                    
+                    # a heuristic to find a table that connects to both
+                    if st.button("🕵️ Find Missing Link"):
+                        with st.spinner("Searching for a bridge table..."):
+                            # a simplified search
+                            all_ds = df['dataset_name'].unique()
+                            candidates = []
+                            for candidate in all_ds:
+                                if candidate in selected_datasets: continue
+                                # pseudo treating this "candidate"
+                                temp_group = selected_datasets + [candidate]
+                                temp_joins = get_joins_for_selection(df, temp_group)
+                                # if it connects to at least 2 of the original selection
+                                if len(temp_joins) >= 2:
+                                    candidates.append(candidate)
+                            
+                            if candidates:
+                                st.success(f"Try adding: {', '.join(candidates[:3])}")
+                            else:
+                                st.error("No direct bridge found.")
+
+            # ... existing drawing code ...
+            mode = 'focused' if ...
             
             if mode == 'focused':
                 st.caption("Showing direct PK-FK connections between selected datasets only.")
