@@ -1372,11 +1372,22 @@ def render_dashboard(df: pd.DataFrame):
             orphans = get_orphan_datasets(df)
             if orphans:
                 st.warning(f"{len(orphans)} datasets have no detected relationships")
-                st.caption("These tables usually lack standard keys like `OrgUnitId` or `UserId` in their definitions.")
+                st.caption("These tables usually lack standard keys like `OrgUnitId` or `UserId`.")
                 
-                if is_advanced:
-                    with st.expander("View Orphan Datasets", expanded=True):
-                        st.dataframe(pd.DataFrame(orphans, columns=['Dataset Name']), hide_index=True)
+                # filtering main df to get details for these orphans
+                # dropping duplicates to get one row per dataset, not one per column
+                orphan_details = df[df['dataset_name'].isin(orphans)][['dataset_name', 'category', 'description']].drop_duplicates('dataset_name')
+                
+                st.dataframe(
+                    orphan_details,
+                    column_config={
+                        "dataset_name": "Dataset",
+                        "category": "Category",
+                        "description": st.column_config.TextColumn("Description", width="medium")
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
             else:
                 st.success("All datasets have at least one connection!")
         
