@@ -1327,19 +1327,37 @@ def render_dashboard(df: pd.DataFrame):
         
         with col_hubs:
             st.subheader("🌟 Most Connected Datasets ('Hubs')")
+            
+            # Context helper
+            with st.expander("ℹ️  Why are these numbers so high?", expanded=False):
+                st.caption("""
+                **High Outgoing (Refers To):** This dataset contains "Super Keys" like `OrgUnitId` or `UserId` 
+                which allows it to join to dozens of other structural tables (e.g., a Log table joining to every Org Unit type).
+                
+                **High Incoming (Referenced By):** This is a central "Dimension" table (like `Users`) 
+                that almost every other table links to.
+                """)
+
             hubs = get_hub_datasets(df, top_n=10)
             if not hubs.empty and hubs['total_connections'].sum() > 0:
                 st.dataframe(
-                    hubs[['dataset_name', 'category', 'total_connections']],
+                    hubs[['dataset_name', 'category', 'outgoing_fks', 'incoming_fks']],
                     column_config={
                         "dataset_name": "Dataset",
                         "category": "Category",
-                        "total_connections": st.column_config.ProgressColumn(
-                            "Connections", 
-                            help="Total incoming and outgoing relationships",
+                        "outgoing_fks": st.column_config.ProgressColumn(
+                            "Refers To (Outgoing)",
+                            help="Number of tables this dataset points TO (contains FKs)",
                             format="%d",
                             min_value=0,
-                            max_value=int(hubs['total_connections'].max())
+                            max_value=int(hubs['outgoing_fks'].max()),
+                        ),
+                        "incoming_fks": st.column_config.ProgressColumn(
+                            "Referenced By (Incoming)",
+                            help="Number of tables pointing TO this dataset (contains PKs)",
+                            format="%d",
+                            min_value=0,
+                            max_value=int(hubs['incoming_fks'].max()),
                         )
                     },
                     use_container_width=True,
@@ -1353,8 +1371,10 @@ def render_dashboard(df: pd.DataFrame):
             orphans = get_orphan_datasets(df)
             if orphans:
                 st.warning(f"{len(orphans)} datasets have no detected relationships")
+                st.caption("These tables usually lack standard keys like `OrgUnitId` or `UserId` in their definitions.")
+                
                 if is_advanced:
-                    with st.expander("View Orphan Datasets"):
+                    with st.expander("View Orphan Datasets", expanded=True):
                         st.dataframe(pd.DataFrame(orphans, columns=['Dataset Name']), hide_index=True)
             else:
                 st.success("All datasets have at least one connection!")
