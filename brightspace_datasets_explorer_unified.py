@@ -1484,23 +1484,23 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                 help="**Focused:** Shows only connections between your selected datasets. **Discovery:** Shows all datasets your selection connects to."
             )
         
-        # advanced controls
-        if is_advanced:
-            with st.expander("🛠️ Graph Controls", expanded=False):
-                col_c1, col_c2, col_c3, col_c4 = st.columns(4)
-                with col_c1:
-                    graph_font_size = st.slider("Font Size", 8, 24, 14)
-                with col_c2:
-                    node_separation = st.slider("Node Separation", 0.1, 2.5, 0.9)
+        # controls available in all modes, but simplified
+        with st.expander("🛠️ Graph Settings", expanded=False):
+            col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+            with col_c1:
+                graph_height = st.slider("Graph Height", 400, 1200, 600)
+            with col_c2:
+                show_edge_labels = st.checkbox("Show Join Labels", True)
+            
+            # some detailed physics controls only for advanced users
+            if is_advanced:
                 with col_c3:
-                    graph_height = st.slider("Graph Height", 400, 1200, 600)
+                    graph_font_size = st.slider("Font Size", 8, 24, 14)
                 with col_c4:
-                    show_edge_labels = st.checkbox("Show Join Labels", True)
-        else:
-            graph_font_size = 14
-            node_separation = 0.9
-            graph_height = 600
-            show_edge_labels = True
+                    node_separation = st.slider("Node Separation", 0.1, 2.5, 0.9)
+            else:
+                graph_font_size = 14
+                node_separation = 0.9
         
         if not selected_datasets:
             st.info("👈 Select datasets from the sidebar to visualize their relationships.")
