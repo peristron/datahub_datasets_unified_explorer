@@ -1588,9 +1588,18 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
 
             # relationships table
             join_data = get_joins_for_selection(df, selected_datasets)
+            
+            # strict filtering, if inn Focused mode, ensures the Target is also in our selection
+            if mode == 'focused' and not join_data.empty:
+                join_data = join_data[join_data['Target Dataset'].isin(selected_datasets)]
+
             if not join_data.empty:
-                with st.expander("📋 View Relationships Table"):
+                # expanded by default now because the data is highly relevant/filtered
+                with st.expander("📋 View Relationships Table", expanded=True):
                     st.dataframe(join_data, use_container_width=True, hide_index=True)
+            elif mode == 'focused' and len(selected_datasets) > 1:
+                with st.expander("📋 View Relationships Table"):
+                    st.info("No direct joins found between these specific datasets.")
     
     elif graph_type == "Orbital Map (Galaxy)":
         st.caption("Categories are shown as golden suns, datasets orbit around their category.")
