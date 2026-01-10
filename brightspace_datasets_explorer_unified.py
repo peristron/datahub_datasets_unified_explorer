@@ -1169,11 +1169,34 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             st.subheader("Dataset Selection")
             
             if is_advanced:
-                select_mode = st.radio("Method:", ["List All", "By Category"], horizontal=True, label_visibility="collapsed")
+                select_mode = st.radio("Method:", ["Templates", "By Category", "List All"], horizontal=True, label_visibility="collapsed")
             else:
-                select_mode = "List All"
+                select_mode = "Templates" # Default to easy mode for Quick Explorer
             
-            if select_mode == "By Category":
+            # -new template logic
+            if select_mode == "Templates":
+                templates = {
+                    "User Progress": ["Users", "User Enrollments", "Content User Progress", "Course Access"],
+                    "Grades & Feedback": ["Users", "Grade Objects", "Grade Results", "Rubric Assessment Results"],
+                    "Discussions": ["Discussion Forums", "Discussion Topics", "Discussion Posts"],
+                    "Quizzes": ["Quiz Objects", "Quiz Attempts", "Quiz User Answers"],
+                    "Assignments": ["Assignment Objects", "Assignment Submissions", "Assignment Feedback"]
+                }
+                
+                chosen_template = st.selectbox("Select a Scenario:", ["Custom Selection..."] + list(templates.keys()))
+                
+                if chosen_template != "Custom Selection...":
+                    # updating the selection state automatically
+                    st.session_state['selected_datasets'] = templates[chosen_template]
+                    selected_datasets = st.session_state['selected_datasets']
+                    st.success(f"Loaded {len(selected_datasets)} datasets for {chosen_template}")
+                else:
+                    # for manual addition on top of template
+                    all_ds = sorted(df['dataset_name'].unique())
+                    selected_datasets = st.multiselect("Select Datasets:", all_ds, default=st.session_state.get('selected_datasets', []))
+
+            elif select_mode == "By Category":
+                # keeping existing By Category logic.
                 all_cats = sorted(df['category'].unique())
                 selected_cats = st.multiselect("Filter Categories:", all_cats, default=[])
                 if selected_cats:
