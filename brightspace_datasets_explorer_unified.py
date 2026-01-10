@@ -1224,7 +1224,6 @@ def render_dashboard(df: pd.DataFrame):
     is_advanced = st.session_state['experience_mode'] == 'advanced'
     
     # --- 1. Top Metrics ---
-    # metrics row
     col1, col2, col3, col4 = st.columns(4)
     
     total_datasets = df['dataset_name'].nunique()
@@ -1244,8 +1243,6 @@ def render_dashboard(df: pd.DataFrame):
     # --- 2. Intelligent Search ---
     st.subheader("🔍 Intelligent Search")
     
-    # Build a search index
-    # We prefix items so the user knows if they are selecting a Table or a Column
     all_datasets = sorted(df['dataset_name'].unique())
     all_columns = sorted(df['column_name'].unique())
     
@@ -1266,7 +1263,6 @@ def render_dashboard(df: pd.DataFrame):
     if search_selection:
         st.divider()
         
-        # Parse the selection type
         search_type = "dataset" if "📦" in search_selection else "column"
         term = search_selection.split(" ", 1)[1]
         
@@ -1274,12 +1270,10 @@ def render_dashboard(df: pd.DataFrame):
             # --- Single Dataset View ---
             st.markdown(f"### Results for Dataset: **{term}**")
             
-            # Get the data
             ds_data = df[df['dataset_name'] == term]
             if not ds_data.empty:
                 meta = ds_data.iloc[0]
                 
-                # Render a "Hero Card" for this dataset
                 with st.container():
                     c1, c2 = st.columns([3, 2])
                     with c1:
@@ -1290,10 +1284,8 @@ def render_dashboard(df: pd.DataFrame):
                             st.caption("No documentation link available.")
                     
                     with c2:
-                        # Reuse our improved relationship summary here!
                         show_relationship_summary(df, term)
                 
-                # Show Schema
                 with st.expander("📋 View Schema", expanded=True):
                     display_cols = ['column_name', 'data_type', 'description', 'key']
                     available_cols = [c for c in display_cols if c in ds_data.columns]
@@ -1303,38 +1295,33 @@ def render_dashboard(df: pd.DataFrame):
             # --- Column View (List of Datasets) ---
             st.markdown(f"### Datasets containing column: `{term}`")
             
-            # Find all datasets containing this column
             hits = df[df['column_name'] == term]['dataset_name'].unique()
             
             if len(hits) > 0:
                 st.info(f"Found **{len(hits)}** datasets containing `{term}`")
                 
-                # Render results as a grid of expandable cards
                 for ds_name in sorted(hits):
                     ds_meta = df[df['dataset_name'] == ds_name].iloc[0]
                     category = ds_meta['category']
                     
                     with st.expander(f"📦 {ds_name}  ({category})"):
-                        # Layout: Info on left, Relationships on right
                         c_info, c_rel = st.columns([2, 1])
                         
                         with c_info:
                             if ds_meta['url']:
                                 st.markdown(f"[View Documentation]({ds_meta['url']})")
                             
-                            # Show the specific row for this column to see description/type
                             col_row = df[(df['dataset_name'] == ds_name) & (df['column_name'] == term)]
                             st.caption("Column Details:")
                             st.dataframe(col_row[['data_type', 'description', 'key']], hide_index=True, use_container_width=True)
                             
                         with c_rel:
-                            # Mini relationship summary
                             show_relationship_summary(df, ds_name)
             else:
                 st.warning("Odd, this column is in the index but no datasets were found. Try reloading.")
                 
     else:
-        # --- 4. Default Dashboard View (shown when no search) ---
+        # --- 4. Default Dashboard View ---
         st.divider()
         col_hubs, col_orphans = st.columns(2)
         
@@ -1342,7 +1329,6 @@ def render_dashboard(df: pd.DataFrame):
             st.subheader("🌟 Most Connected Datasets ('Hubs')")
             hubs = get_hub_datasets(df, top_n=10)
             if not hubs.empty and hubs['total_connections'].sum() > 0:
-                # Format the table nicely
                 st.dataframe(
                     hubs[['dataset_name', 'category', 'total_connections']],
                     column_config={
@@ -1385,12 +1371,16 @@ def render_dashboard(df: pd.DataFrame):
             cat_stats.columns = ['Category', 'Datasets', 'Columns']
             cat_stats = cat_stats.sort_values('Datasets', ascending=False)
             
-            fig = px.bar(cat_stats, x='Category', y='Datasets', color='Columns',
-                        title="Datasets per Category", color_continuous_scale='Blues')
-            st.plotly_chart(fig, use_container_width=True)
+            # FIXED: Defined columns before using them
+            col_chart, col_table = st.columns([2, 1])
             
-        with col_table:
-            st.dataframe(cat_stats, use_container_width=True, hide_index=True)
+            with col_chart:
+                fig = px.bar(cat_stats, x='Category', y='Datasets', color='Columns',
+                            title="Datasets per Category", color_continuous_scale='Blues')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col_table:
+                st.dataframe(cat_stats, use_container_width=True, hide_index=True)
     
     # --- 6. Path Finder (Advanced Only) ---
     if is_advanced:
@@ -1416,7 +1406,6 @@ def render_dashboard(df: pd.DataFrame):
             if path:
                 st.success(f"Found path with {len(path) - 1} join(s)")
                 
-                # visualize the path
                 path_details = get_path_details(df, path)
                 
                 path_text = []
@@ -1430,7 +1419,6 @@ def render_dashboard(df: pd.DataFrame):
                         st.markdown(f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`")
             else:
                 st.error("No path found between these datasets. They may not be connected.")
-
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
