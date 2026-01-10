@@ -1220,13 +1220,24 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 st.rerun()
         else:
             with st.expander("🔐 AI Login", expanded=False):
-                st.text_input(
-                    "Password", 
-                    type="password", 
-                    key="password_input", 
-                    on_change=perform_login,
-                    help="Enter password to unlock AI features."
-                )
+                # uses st.form to create an HTML <form> tag
+                # isolates the password field so browsers don't think 
+                # the "Dataset Selector" above is a "Username" field
+                with st.form("login_form"):
+                    st.text_input(
+                        "Password", 
+                        type="password", 
+                        key="password_input", 
+                        help="Enter password to unlock AI features."
+                    )
+                    # forms require a submit button
+                    submitted = st.form_submit_button("Unlock")
+                
+                if submitted:
+                    perform_login()
+                    if st.session_state.get('authenticated'):
+                        st.rerun()
+
                 if st.session_state['auth_error']:
                     st.error("Incorrect password.")
         
