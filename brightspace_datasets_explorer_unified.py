@@ -1223,7 +1223,7 @@ def render_dashboard(df: pd.DataFrame):
     
     is_advanced = st.session_state['experience_mode'] == 'advanced'
     
-    # --- 1. Top Metrics ---
+    # -top metrics -
     col1, col2, col3, col4 = st.columns(4)
     
     total_datasets = df['dataset_name'].nunique()
@@ -1236,11 +1236,12 @@ def render_dashboard(df: pd.DataFrame):
     col1.metric("Total Datasets", total_datasets)
     col2.metric("Total Columns", f"{total_columns:,}")
     col3.metric("Categories", total_categories)
-    col4.metric("Relationships", total_relationships)
+    # improvement: renamed to "Unique Joins" and added tooltip to explain the count
+    col4.metric("Unique Joins", total_relationships, help="Total count of unique directional links (A → B) detected across the entire schema.")
     
     st.divider()
     
-    # --- 2. Intelligent Search ---
+    # 2 intelligent search ---
     st.subheader("🔍 Intelligent Search")
     
     all_datasets = sorted(df['dataset_name'].unique())
