@@ -1669,8 +1669,13 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                 st.markdown("#### Generated SQL")
                 st.code(sql_code, language="sql")
                 
-                # copy button (streamlit's code block has built-in copy)
-                st.caption("💡 Click the copy icon in the code block to copy the SQL.")
+                # adding download button
+                st.download_button(
+                    label="📥 Download .sql File",
+                    data=sql_code,
+                    file_name="brightspace_query.sql",
+                    mime="application/sql"
+                )
             
             with col_schema:
                 st.markdown("#### Field Reference")
