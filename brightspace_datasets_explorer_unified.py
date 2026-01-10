@@ -1541,6 +1541,22 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             )
             st.plotly_chart(fig, use_container_width=True)
             
+            # -integrated sql generation
+            if mode == 'focused' and len(selected_datasets) > 1:
+                with st.expander("⚡ Get SQL for this View", expanded=False):
+                    st.caption("Auto-generated query based on the connections shown above.")
+                    sql_code = generate_sql(selected_datasets, df)
+                    st.code(sql_code, language="sql")
+                    col_copy, col_goto = st.columns([1, 4])
+                    with col_copy:
+                        st.download_button(
+                            label="📥 Download SQL",
+                            data=sql_code,
+                            file_name="graph_query.sql",
+                            mime="application/sql"
+                        )
+            # --------------------------------------
+            
             # relationships table
             join_data = get_joins_for_selection(df, selected_datasets)
             if not join_data.empty:
