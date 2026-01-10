@@ -1414,7 +1414,7 @@ def render_dashboard(df: pd.DataFrame):
             else:
                 st.success("All datasets have at least one connection!")
         
-        # --- 5. Category Chart (Advanced Only) ---
+        # --category chart (advanced only)
         if is_advanced:
             st.divider()
             st.subheader("📁 Category Breakdown")
@@ -1426,7 +1426,7 @@ def render_dashboard(df: pd.DataFrame):
             cat_stats.columns = ['Category', 'Datasets', 'Columns']
             cat_stats = cat_stats.sort_values('Datasets', ascending=False)
             
-            # FIXED: Defined columns before using them
+            # defined columns before using them
             col_chart, col_table = st.columns([2, 1])
             
             with col_chart:
@@ -1437,7 +1437,7 @@ def render_dashboard(df: pd.DataFrame):
             with col_table:
                 st.dataframe(cat_stats, use_container_width=True, hide_index=True)
     
-    # --- 6. Path Finder (Advanced Only) ---
+    # -path finder (advanced only) ---
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
@@ -1515,7 +1515,7 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             with col_c2:
                 show_edge_labels = st.checkbox("Show Join Labels", True)
             
-            # some detailed physics controls only for advanced users
+            # detailed physics controls only for advanced users
             if is_advanced:
                 with col_c3:
                     graph_font_size = st.slider("Font Size", 8, 24, 14)
@@ -1526,38 +1526,40 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                 node_separation = 0.9
         
         if not selected_datasets:
-            st.info("👈 Select datasets...")
+            st.info("👈 Select a Template or Datasets from the sidebar to visualize their relationships.")
         else:
-            # checks for disconnected components in selection
+            # to define mode first
+            mode = 'focused' if 'Focused' in graph_mode else 'discovery'
+
+            # bridge finder logic
+            # checking for disconnected components in selection
             if len(selected_datasets) > 1 and mode == 'focused':
-                # quick check: enough edges to connect them?
+                # quick check: do we have enough edges to connect them?
                 current_joins = get_joins_for_selection(df, selected_datasets)
+                
+                # if selection has no internal joins, offer help
                 if current_joins.empty:
                     st.warning("⚠️ These datasets don't connect directly. You might be missing a 'bridge' table.")
                     
-                    # a heuristic to find a table that connects to both
                     if st.button("🕵️ Find Missing Link"):
                         with st.spinner("Searching for a bridge table..."):
-                            # a simplified search
                             all_ds = df['dataset_name'].unique()
                             candidates = []
                             for candidate in all_ds:
                                 if candidate in selected_datasets: continue
-                                # pseudo treating this "candidate"
-                                temp_group = selected_datasets + [candidate]
+                                # pretending to add this candidate
+                                temp_group = list(selected_datasets) + [candidate]
                                 temp_joins = get_joins_for_selection(df, temp_group)
-                                # if it connects to at least 2 of the original selection
+                                # if it connects to at least 2 of our original selection
                                 if len(temp_joins) >= 2:
                                     candidates.append(candidate)
                             
                             if candidates:
                                 st.success(f"Try adding: {', '.join(candidates[:3])}")
                             else:
-                                st.error("No direct bridge found.")
+                                st.error("No direct bridge found. These datasets might be unrelated.")
 
-            # ... existing drawing code ...
-            mode = 'focused' if ...
-            
+            # graph generation
             if mode == 'focused':
                 st.caption("Showing direct PK-FK connections between selected datasets only.")
             else:
@@ -1569,7 +1571,7 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # -integrated sql generation
+            # integrated sql generation
             if mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("⚡ Get SQL for this View", expanded=False):
                     st.caption("Auto-generated query based on the connections shown above.")
@@ -1583,8 +1585,7 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                             file_name="graph_query.sql",
                             mime="application/sql"
                         )
-            # --------------------------------------
-            
+
             # relationships table
             join_data = get_joins_for_selection(df, selected_datasets)
             if not join_data.empty:
