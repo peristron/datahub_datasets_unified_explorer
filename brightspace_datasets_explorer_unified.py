@@ -156,7 +156,29 @@ PRICING_REGISTRY = {
     "gpt-4.1":                 {"in": 2.00, "out": 8.00,  "provider": "OpenAI"},
     "gpt-4.1-mini":            {"in": 0.40, "out": 1.60,  "provider": "OpenAI"},
 }
-
+# common d2l enumeration mappings (the "decoder ring")
+ENUM_DEFINITIONS = {
+    "GradeObjectTypeId": {
+        1: "Numeric", 2: "Pass/Fail", 3: "Selectbox", 4: "Text", 
+        6: "Calculated", 7: "Formula"
+    },
+    "OrgUnitTypeId": {
+        1: "Organization", 2: "Course Offering", 3: "Course Template", 
+        4: "Department", 5: "Semester", 6: "Group", 7: "Section"
+    },
+    "SessionType": {
+        1: "Instructor", 2: "Student", 3: "Admin", 4: "Impersonated"
+    },
+    "ActionType": {
+        1: "Login", 2: "Logout", 3: "Time Out", 4: "Impersonated"
+    },
+    "InputDeviceType": {
+        1: "PC", 2: "Mobile", 3: "Tablet"
+    },
+    "OutcomeType": {
+        1: "General", 2: "Specific", 3: "Program"
+    }
+}
 # =============================================================================
 # 3. session state management
 # =============================================================================
