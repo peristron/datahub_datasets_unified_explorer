@@ -1530,7 +1530,7 @@ def render_dashboard(df: pd.DataFrame):
     # --how to use section -
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
-        **Welcome to the Brightspace Dataset Explorer!** This tool acts as a Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries.
+        **Welcome to the Brightspace Dataset Explorer, a tool to help you navigate schemas and build queries across a large and growing number of datahub datasets** .
         
         1.  **🔍 Search:** Use **Intelligent Search** (below) to find which dataset a specific column (e.g., `OrgUnitId`) belongs to.
         2.  **🗺️ Map:** Switch to the **Relationship Map** tab to visualize how tables connect via Primary/Foreign keys.
