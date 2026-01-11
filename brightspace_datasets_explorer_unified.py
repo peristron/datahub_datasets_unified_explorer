@@ -1621,22 +1621,37 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             )
             st.plotly_chart(fig, use_container_width=True)
             
-            # integrated sql generation
+            # 4. integrated SQL generation
             if mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("⚡ Get SQL for this View", expanded=False):
-                    st.caption("Auto-generated query based on the connections shown above.")
-                    sql_code = generate_sql(selected_datasets, df)
+                    
+                    # -dialect selector ---
+                    col_dial, col_cap = st.columns([2, 3])
+                    with col_dial:
+                        dialect = st.radio(
+                            "SQL Dialect:", 
+                            ["T-SQL", "Snowflake", "PostgreSQL"], 
+                            horizontal=True,
+                            label_visibility="collapsed"
+                        )
+                    with col_cap:
+                        st.caption(f"Generating syntax for **{dialect}**.")
+                    # -----------------------------
+
+                    # to pass the selected dialect to the generator
+                    sql_code = generate_sql(selected_datasets, df, dialect)
+                    
                     st.code(sql_code, language="sql")
+                    
                     col_copy, col_goto = st.columns([1, 4])
                     with col_copy:
                         st.download_button(
-                            label="📥 Download SQL",
+                            label=f"📥 Download .sql",
                             data=sql_code,
-                            file_name="graph_query.sql",
+                            file_name=f"graph_query_{dialect.lower()}.sql",
                             mime="application/sql"
                         )
-
-            # reelationships table
+            # relationships table
             join_data = get_joins_for_selection(df, selected_datasets)
             
             # stricter filtering: If in Focused mode, ensure the Target is also in our selection
