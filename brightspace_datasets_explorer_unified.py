@@ -1259,9 +1259,10 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # navigation based on mode
         if is_advanced:
+            # adding "📚 KPI Recipes" to the list
             view = st.radio(
                 "Navigation", 
-                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "⚡ SQL Builder", "🤖 AI Assistant"],
+                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "🤖 AI Assistant"],
                 label_visibility="collapsed"
             )
         else:
