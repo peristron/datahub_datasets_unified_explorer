@@ -1368,7 +1368,16 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # data status and scraper
         if not df.empty:
-            st.caption(f"✅ Loaded {df['dataset_name'].nunique()} datasets ({len(df):,} columns)")
+            # checks file modification time to show "Last Updated"
+            try:
+                mod_time = os.path.getmtime('dataset_metadata.csv')
+                last_updated = pd.Timestamp(mod_time, unit='s').strftime('%Y-%m-%d')
+            except:
+                last_updated = "Unknown"
+
+            st.success(f"✅ **{len(df['dataset_name'].nunique())}** Datasets Loaded")
+            st.caption(f"📅 Schema updated: {last_updated}")
+            st.caption(f"🔢 Total Columns: {len(df):,}")
         else:
             st.error("❌ No data loaded")
         
