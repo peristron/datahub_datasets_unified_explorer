@@ -1119,7 +1119,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             ["simple", "advanced"],
             format_func=lambda x: "🟢 Quick Explorer" if x == "simple" else "🔷 Power User",
             horizontal=True,
-            help="Quick Explorer: Streamlined interface. Power User: All features and controls."
+            help="Quick Explorer: Streamlined interface. Power User: All features and controls; best combo is probably "Power User">Relationship Map">"Dataset Selection">"List All">then select your datasets."
         )
         
         is_advanced = st.session_state['experience_mode'] == 'advanced'
