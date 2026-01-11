@@ -1213,6 +1213,21 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # authentication
         st.divider()
+
+        # -now: a DECOYINPUT TO TRAP PASSWORD MANAGER ---
+        # injects an invisible text field. Browsers will think THIS 
+        # is the username field for the password below, leaving the 
+        # Dataset Selector alone
+        st.markdown(
+            """
+            <div style="height:0px; overflow:hidden; opacity:0; position:absolute; z-index:-1;">
+                <input type="text" name="decoy_username" autocomplete="off" tabindex="-1">
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        # ------------------------------------------------
+
         if st.session_state['authenticated']:
             st.success("🔓 AI Unlocked")
             if st.button("Logout"):
@@ -1220,9 +1235,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 st.rerun()
         else:
             with st.expander("🔐 AI Login", expanded=False):
-                # uses st.form to create an HTML <form> tag
-                # isolates the password field so browsers don't think 
-                # the "Dataset Selector" above is a "Username" field
                 with st.form("login_form"):
                     st.text_input(
                         "Password", 
@@ -1230,7 +1242,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                         key="password_input", 
                         help="Enter password to unlock AI features."
                     )
-                    # forms require a submit button
                     submitted = st.form_submit_button("Unlock")
                 
                 if submitted:
