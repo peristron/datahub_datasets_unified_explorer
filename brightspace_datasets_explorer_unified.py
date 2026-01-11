@@ -2057,72 +2057,88 @@ def render_schema_browser(df: pd.DataFrame):
         st.subheader("📂 Browse by Dataset")
         
         all_ds = sorted(df['dataset_name'].unique())
-        selected_ds = st.selectbox("Select a Dataset", [""] + all_ds)
         
-        if selected_ds:
-            subset = df[df['dataset_name'] == selected_ds]
-            
-            # dataset info
-            col_info, col_stats = st.columns([2, 1])
-            
-            with col_info:
-                if not subset.empty and 'category' in subset.columns:
-                    st.caption(f"Category: **{subset.iloc[0]['category']}**")
-                if 'url' in subset.columns and subset.iloc[0]['url']:
-                    st.link_button("📄 View Documentation", subset.iloc[0]['url'])
-            
-            with col_stats:
-                show_relationship_summary(df, selected_ds)
-            
-            # --- enum 'decoder ring'---
-            # checks if any columns in this dataset match our known Enum definitions
-            ds_columns = subset['column_name'].tolist()
-            found_enums = {col: ENUM_DEFINITIONS[col] for col in ds_columns if col in ENUM_DEFINITIONS}
-            
-            if found_enums:
-                with st.expander("💡 Column Value Decoders", expanded=True):
-                    st.caption("This dataset contains columns with coded integer values. Here's what they mean:")
-                    
-                    # create tabs if multiple enums found, otherwise just show one
-                    if len(found_enums) > 1:
-                        tabs = st.tabs(list(found_enums.keys()))
-                        for i, (col_name, mapping) in enumerate(found_enums.items()):
-                            with tabs[i]:
-                                enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
-                                st.dataframe(enum_df, hide_index=True, use_container_width=True)
-                    else:
-                        col_name = list(found_enums.keys())[0]
-                        mapping = found_enums[col_name]
-                        st.markdown(f"**{col_name}**")
-                        enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
-                        st.dataframe(enum_df, hide_index=True, use_container_width=True)
-            # ------------------------------
+        # selectbox -> multiselect to allow multiple schemas at once
+        selected_ds_list = st.multiselect(
+            "Select Datasets", 
+            options=all_ds,
+            placeholder="Choose one or more datasets to inspect..."
+        )
+        
+        if selected_ds_list:
+            # LOOP through selections
+            for i, selected_ds in enumerate(selected_ds_list):
+                
+                # adds divider if this isn't the first item
+                if i > 0:
+                    st.divider()
+                
+                # Header for the specific dataset
+                st.markdown(f"### 📦 {selected_ds}")
+                
+                subset = df[df['dataset_name'] == selected_ds]
+                
+                # dataset info
+                col_info, col_stats = st.columns([2, 1])
+                
+                with col_info:
+                    if not subset.empty and 'category' in subset.columns:
+                        st.caption(f"Category: **{subset.iloc[0]['category']}**")
+                    if 'url' in subset.columns and subset.iloc[0]['url']:
+                        st.link_button("📄 View Documentation", subset.iloc[0]['url'])
+                
+                with col_stats:
+                    show_relationship_summary(df, selected_ds)
+                
+                # --- enum 'decoder ring'---
+                ds_columns = subset['column_name'].tolist()
+                found_enums = {col: ENUM_DEFINITIONS[col] for col in ds_columns if col in ENUM_DEFINITIONS}
+                
+                if found_enums:
+                    # uses unique key for the expander to avoid conflicts in the loop
+                    with st.expander(f"💡 Column Value Decoders ({selected_ds})", expanded=True):
+                        st.caption("This dataset contains columns with coded integer values. Here's what they mean:")
+                        
+                        if len(found_enums) > 1:
+                            tabs = st.tabs(list(found_enums.keys()))
+                            for idx, (col_name, mapping) in enumerate(found_enums.items()):
+                                with tabs[idx]:
+                                    enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
+                                    st.dataframe(enum_df, hide_index=True, use_container_width=True)
+                        else:
+                            col_name = list(found_enums.keys())[0]
+                            mapping = found_enums[col_name]
+                            st.markdown(f"**{col_name}**")
+                            enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
+                            st.dataframe(enum_df, hide_index=True, use_container_width=True)
+                # ------------------------------
 
-            # schema table
-            st.markdown("#### Schema")
-            display_cols = ['column_name', 'data_type', 'description', 'key']
-            available_cols = [c for c in display_cols if c in subset.columns]
-            st.dataframe(
-                subset[available_cols], 
-                use_container_width=True, 
-                hide_index=True,
-                height=400
-            )
-            
-            # pk/fk breakdown
-            col_pk, col_fk = st.columns(2)
-            
-            with col_pk:
-                if 'is_primary_key' in subset.columns:
-                    pks = subset[subset['is_primary_key']]['column_name'].tolist()
-                    if pks:
-                        st.markdown(f"🔑 **Primary Keys:** {', '.join(pks)}")
-            
-            with col_fk:
-                if 'is_foreign_key' in subset.columns:
-                    fks = subset[subset['is_foreign_key']]['column_name'].tolist()
-                    if fks:
-                        st.markdown(f"🔗 **Foreign Keys:** {', '.join(fks)}")
+                # schema table
+                st.markdown("#### Schema")
+                display_cols = ['column_name', 'data_type', 'description', 'key']
+                available_cols = [c for c in display_cols if c in subset.columns]
+                
+                st.dataframe(
+                    subset[available_cols], 
+                    use_container_width=True, 
+                    hide_index=True,
+                    height=None # set to "none" so it auto-expands to show all rows
+                )
+                
+                # pk/fk breakdown
+                col_pk, col_fk = st.columns(2)
+                
+                with col_pk:
+                    if 'is_primary_key' in subset.columns:
+                        pks = subset[subset['is_primary_key']]['column_name'].tolist()
+                        if pks:
+                            st.markdown(f"🔑 **Primary Keys:** {', '.join(pks)}")
+                
+                with col_fk:
+                    if 'is_foreign_key' in subset.columns:
+                        fks = subset[subset['is_foreign_key']]['column_name'].tolist()
+                        if fks:
+                            st.markdown(f"🔗 **Foreign Keys:** {', '.join(fks)}")
 
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
