@@ -1374,7 +1374,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # --data mgmt, Backup Button--
         with st.expander("⚙️ Data Management", expanded=df.empty):
-            pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
+            pasted_text = st.text_area("URLs to Scrape (add any newly released URLs for Categories as needed)", height=100, value=DEFAULT_URLS)
             
             c_scrape, c_download = st.columns(2)
             
