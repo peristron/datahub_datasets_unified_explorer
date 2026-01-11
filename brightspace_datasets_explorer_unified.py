@@ -1354,9 +1354,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         if is_advanced:
             view = st.radio(
                 "Navigation", 
-                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "✨ Schema Diff", "🤖 AI Assistant"],
+                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "🔧 UDF Flattener", "✨ Schema Diff", "🤖 AI Assistant"],
                 label_visibility="collapsed"
-            )
+            )    
         else:
             view = st.radio(
                 "Navigation", 
