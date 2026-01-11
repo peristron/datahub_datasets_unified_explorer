@@ -1257,6 +1257,76 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame, dialect: str = 
             
     return "\n".join(sql_lines)
 
+def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
+    """
+    generates python pandas code to load and merge the selected datasets.
+    """
+    if len(selected_datasets) < 2:
+        return "# please select at least 2 datasets to generate code."
+    
+    # helper to clean names for python variables (User Logins -> df_user_logins)
+    def clean_var(name):
+        return f"df_{name.lower().replace(' ', '_')}"
+    
+    # build connection graph
+    G_full = nx.Graph()
+    joins = get_joins(df)
+    if not joins.empty:
+        for _, r in joins.iterrows():
+            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+
+    lines = ["import pandas as pd", "", "# 1. Load Dataframes"]
+    
+    # load steps
+    for ds in selected_datasets:
+        var = clean_var(ds)
+        lines.append(f"{var} = pd.read_csv('{ds}.csv')")
+    
+    lines.append("")
+    lines.append("# 2. Perform Merges")
+    
+    # connection logic
+    base_ds = selected_datasets[0]
+    base_var = clean_var(base_ds)
+    
+    lines.append(f"# Starting with {base_ds}")
+    lines.append(f"final_df = {base_var}")
+    
+    joined_tables = {base_ds}
+    remaining_tables = selected_datasets[1:]
+    
+    for current_ds in remaining_tables:
+        current_var = clean_var(current_ds)
+        found_connection = False
+        
+        for existing_ds in joined_tables:
+            if G_full.has_edge(current_ds, existing_ds):
+                key = G_full[current_ds][existing_ds]['key']
+                
+                lines.append(f"")
+                lines.append(f"# Joining {current_ds} to {existing_ds} on {key}")
+                lines.append(f"final_df = pd.merge(")
+                lines.append(f"    final_df,")
+                lines.append(f"    {current_var},")
+                lines.append(f"    on='{key}',")
+                lines.append(f"    how='left'")
+                lines.append(f")")
+                
+                joined_tables.add(current_ds)
+                found_connection = True
+                break
+        
+        if not found_connection:
+            lines.append(f"")
+            lines.append(f"# ⚠️ No direct key found for {current_ds}. Performing cross join (careful!)")
+            lines.append(f"final_df = final_df.merge({current_var}, how='cross')")
+            joined_tables.add(current_ds)
+            
+    lines.append("")
+    lines.append("# 3. Preview Result")
+    lines.append("print(final_df.head())")
+    
+    return "\n".join(lines)
 
 # =============================================================================
 # 9. view controllers (modular ui)
