@@ -1507,7 +1507,24 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             st.markdown("### 🔗 Related Tools")
             st.link_button("🔎 CSV Query Tool", "https://csvexpl0rer.streamlit.app/")
             st.link_button("✂️ CSV Splitter", "https://csvsplittertool.streamlit.app/")
-    
+           # cross-links (advanced mode only)
+        if is_advanced:
+            st.divider()
+            st.markdown("### 🔗 Related Tools")
+            
+            # intelligence engine
+            st.link_button(
+                "🧠 Signal Foundry", 
+                "https://signalfoundry.streamlit.app/",
+                help="An advanced NLP engine for unstructured data. Use this to analyze Discussion Posts, Survey Comments, and Assignment Feedback."
+            )
+            
+            # utilities, possibly related (for the same basic persona)
+            c_t1, c_t2 = st.columns(2)
+            with c_t1:
+                st.link_button("🔎 CSV SQL", "https://csvexpl0rer.streamlit.app/", help="Run SQL queries on CSV files.")
+            with c_t2:
+                st.link_button("✂️ Splitter", "https://csvsplittertool.streamlit.app/", help="Split large CSVs into smaller chunks.") 
     return view, selected_datasets
 
 
