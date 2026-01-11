@@ -2353,6 +2353,20 @@ def render_udf_flattener(df: pd.DataFrame):
     **The Solution:** This tool generates the `CASE WHEN` SQL statements needed to pivot these rows into a clean column format.
     """)
     
+    # --- contextual help/caveat ---
+    with st.expander("ℹ️ How does this work? (Read First)", expanded=True):
+        st.info("""
+        **Why do I have to type the fields manually?**
+        
+        This application only reads the **Schema** (column names) of your datasets, not the **Data** (rows). 
+        
+        1. We can guess the **Tables** (e.g., `UserUserDefinedFields`) based on standard naming conventions.
+        2. We **cannot** know your specific custom fields (e.g., that Field ID `4` is "Department" or Field ID `9` is "Pronouns").
+        
+        **Workflow:** You must look up your specific Field IDs (usually found in `UserDefinedFields`) and enter them in Step 3 below.
+        """)
+    # ---------------------------------------
+    
     st.divider()
 
     # 1 table selection with smart defaults
@@ -2361,9 +2375,9 @@ def render_udf_flattener(df: pd.DataFrame):
     col_main, col_eav = st.columns(2)
     all_ds = sorted(df['dataset_name'].unique())
     
-    # tries guessing defaults based on typical D2L naming
+    # tries best-guessing defaults based on typical D2L naming
     def_main = "Users" if "Users" in all_ds else all_ds[0]
-    # "UserUserDefinedFields" is the typical EAV table, "UserDefinedFields" is usually the definition table
+    # "UserUserDefinedFields" is the typical EAV table containing the actual data
     def_eav = "UserUserDefinedFields" if "UserUserDefinedFields" in all_ds else (all_ds[1] if len(all_ds) > 1 else all_ds[0])
     
     with col_main:
@@ -2374,7 +2388,7 @@ def render_udf_flattener(df: pd.DataFrame):
     # 2 column mapping
     st.subheader("2. Column Mapping")
     
-    # calculates intersection for the join key
+    # calculate intersection for the join key
     main_cols = df[df['dataset_name'] == main_table]['column_name'].tolist()
     eav_cols = df[df['dataset_name'] == eav_table]['column_name'].tolist()
     common = list(set(main_cols) & set(eav_cols))
@@ -2388,15 +2402,14 @@ def render_udf_flattener(df: pd.DataFrame):
         piv_idx = 0
         if 'FieldId' in eav_cols: piv_idx = eav_cols.index('FieldId')
         elif 'Name' in eav_cols: piv_idx = eav_cols.index('Name')
-        pivot_col = st.selectbox("Attribute Name Column", eav_cols, index=piv_idx, help="The column containing the field identifiers (e.g. 'Pronouns' or '1').")
+        pivot_col = st.selectbox("Attribute Name Column", eav_cols, index=piv_idx, help="The column containing the field identifiers (e.g. 'FieldId' or 'Name').")
     with c3:
         # smart default for value column
         val_idx = eav_cols.index('Value') if 'Value' in eav_cols else 0
         val_col = st.selectbox("Value Column", eav_cols, index=val_idx, help="The column containing the actual data.")
 
-    # 3. field definition
+    # 3 field definition
     st.subheader("3. Define Fields")
-    st.caption("Since this tool only scans metadata (schema), it doesn't know *which* specific custom fields you have. Please list them below.")
     
     col_input, col_fields = st.columns([1, 2])
     
@@ -2406,12 +2419,14 @@ def render_udf_flattener(df: pd.DataFrame):
     with col_fields:
         if input_type == "IDs (Integers)":
             placeholder = "e.g. 1, 4, 9, 12"
+            help_text = "Enter the Field IDs you want to turn into columns. You can find these IDs in the 'UserDefinedFields' dataset."
         else:
             placeholder = "e.g. Pronouns, Department, Start Date"
+            help_text = "Enter the exact Names of the fields you want to turn into columns. These must match the data exactly."
         
-        raw_fields = st.text_area("Fields to Flatten (comma separated)", placeholder=placeholder)
+        raw_fields = st.text_area("Fields to Flatten (comma separated)", placeholder=placeholder, help=help_text)
 
-    # 4. generator
+    # 4 generator
     if st.button("Generate Pivot SQL", type="primary"):
         if not raw_fields:
             st.error("Please enter at least one field to flatten.")
@@ -2429,12 +2444,12 @@ def render_udf_flattener(df: pd.DataFrame):
                     match_logic = f"{pivot_col} = {f}"
                     alias = f"Field_{f}"
                 else:
-                    # escapes single quotes if necessary
+                    # escape single quotes if necessary
                     safe_f = f.replace("'", "''")
                     match_logic = f"{pivot_col} = '{safe_f}'"
                     alias = f.replace(' ', '_').replace("'", "")
                 
-                # max(Case...) pattern is the standard SQL pivot method
+                # max(Case...) pattern is the standard sql pivot method
                 lines.append(f"    MAX(CASE WHEN e.{match_logic} THEN e.{val_col} END) AS {alias}{comma}")
             
             lines.append(f"FROM {main_table} m")
