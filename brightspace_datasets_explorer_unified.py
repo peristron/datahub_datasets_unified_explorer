@@ -1409,7 +1409,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     # converts dataframe to CSV for download
                     csv = df.to_csv(index=False).encode('utf-8')
                     st.download_button(
-                        label="💾 Save Backup CSV",
+                        label="💾 Save Backup CSV, e.g. for comparisons",
                         data=csv,
                         file_name=f"brightspace_metadata_backup_{timestamp}.csv",
                         mime="text/csv",
