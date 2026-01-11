@@ -2345,6 +2345,105 @@ def render_kpi_recipes(df: pd.DataFrame):
 # 10. main orchestrator
 # =============================================================================
 
+def render_udf_flattener(df: pd.DataFrame):
+    """renders the EAV pivot tool for user defined fields."""
+    st.header("🔧 UDF Flattener")
+    st.markdown("""
+    **The Problem:** D2L stores custom data in "Entity-Attribute-Value" (EAV) rows (e.g., `UserId`, `FieldId`, `Value`).
+    **The Solution:** This tool generates the `CASE WHEN` SQL statements needed to pivot these rows into a clean column format.
+    """)
+    
+    st.divider()
+
+    # 1 table selection with smart defaults
+    st.subheader("1. Configuration")
+    
+    col_main, col_eav = st.columns(2)
+    all_ds = sorted(df['dataset_name'].unique())
+    
+    # tries guessing defaults based on typical D2L naming
+    def_main = "Users" if "Users" in all_ds else all_ds[0]
+    # "UserUserDefinedFields" is the typical EAV table, "UserDefinedFields" is usually the definition table
+    def_eav = "UserUserDefinedFields" if "UserUserDefinedFields" in all_ds else (all_ds[1] if len(all_ds) > 1 else all_ds[0])
+    
+    with col_main:
+        main_table = st.selectbox("Main Entity Table (The Rows)", all_ds, index=all_ds.index(def_main) if def_main in all_ds else 0)
+    with col_eav:
+        eav_table = st.selectbox("Attribute Table (The Data)", all_ds, index=all_ds.index(def_eav) if def_eav in all_ds else 0)
+
+    # 2 column mapping
+    st.subheader("2. Column Mapping")
+    
+    # calculates intersection for the join key
+    main_cols = df[df['dataset_name'] == main_table]['column_name'].tolist()
+    eav_cols = df[df['dataset_name'] == eav_table]['column_name'].tolist()
+    common = list(set(main_cols) & set(eav_cols))
+    
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        join_key = st.selectbox("Join Key (PK)", common, index=common.index('UserId') if 'UserId' in common else 0, help="The ID connecting both tables.")
+    with c2:
+        # smart default for pivot column (usually FieldId or Name)
+        piv_idx = 0
+        if 'FieldId' in eav_cols: piv_idx = eav_cols.index('FieldId')
+        elif 'Name' in eav_cols: piv_idx = eav_cols.index('Name')
+        pivot_col = st.selectbox("Attribute Name Column", eav_cols, index=piv_idx, help="The column containing the field identifiers (e.g. 'Pronouns' or '1').")
+    with c3:
+        # smart default for value column
+        val_idx = eav_cols.index('Value') if 'Value' in eav_cols else 0
+        val_col = st.selectbox("Value Column", eav_cols, index=val_idx, help="The column containing the actual data.")
+
+    # 3. field definition
+    st.subheader("3. Define Fields")
+    st.caption("Since this tool only scans metadata (schema), it doesn't know *which* specific custom fields you have. Please list them below.")
+    
+    col_input, col_fields = st.columns([1, 2])
+    
+    with col_input:
+        input_type = st.radio("Key Type", ["IDs (Integers)", "Names (Strings)"], help="Are we pivoting on '1, 2, 3' or 'Gender, Dept'?")
+    
+    with col_fields:
+        if input_type == "IDs (Integers)":
+            placeholder = "e.g. 1, 4, 9, 12"
+        else:
+            placeholder = "e.g. Pronouns, Department, Start Date"
+        
+        raw_fields = st.text_area("Fields to Flatten (comma separated)", placeholder=placeholder)
+
+    # 4. generator
+    if st.button("Generate Pivot SQL", type="primary"):
+        if not raw_fields:
+            st.error("Please enter at least one field to flatten.")
+        else:
+            fields = [f.strip() for f in raw_fields.split(',') if f.strip()]
+            
+            lines = ["SELECT"]
+            lines.append(f"    m.{join_key},")
+            
+            for i, f in enumerate(fields):
+                comma = "," if i < len(fields) - 1 else ""
+                
+                # logic: make safe alias for the column name
+                if input_type == "IDs (Integers)":
+                    match_logic = f"{pivot_col} = {f}"
+                    alias = f"Field_{f}"
+                else:
+                    # escapes single quotes if necessary
+                    safe_f = f.replace("'", "''")
+                    match_logic = f"{pivot_col} = '{safe_f}'"
+                    alias = f.replace(' ', '_').replace("'", "")
+                
+                # max(Case...) pattern is the standard SQL pivot method
+                lines.append(f"    MAX(CASE WHEN e.{match_logic} THEN e.{val_col} END) AS {alias}{comma}")
+            
+            lines.append(f"FROM {main_table} m")
+            lines.append(f"LEFT JOIN {eav_table} e ON m.{join_key} = e.{join_key}")
+            lines.append(f"GROUP BY m.{join_key}")
+            
+            st.code("\n".join(lines), language="sql")
+            st.caption("Copy this SQL to query your database.")
+
 def main():
     """main entry point that orchestrates the application."""
     
