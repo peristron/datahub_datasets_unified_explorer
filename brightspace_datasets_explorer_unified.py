@@ -24,7 +24,7 @@ import math
 # =============================================================================
 
 st.set_page_config(
-    page_title="Brightspace Dataset Explorer",
+    page_title="Brightspace Datasets Explorer",
     layout="wide",
     page_icon="🔗",
     initial_sidebar_state="expanded"
