@@ -1522,9 +1522,24 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
     return view, selected_datasets
 
 
+
 def render_dashboard(df: pd.DataFrame):
     """renders the main dashboard with overview statistics and intelligent search."""
     st.header("📊 Datahub Datasets Overview")
+    
+    # --how to use section -
+    with st.expander("ℹ️ How to use this application", expanded=False):
+        st.markdown("""
+        **Welcome to the Brightspace Dataset Explorer!** This tool acts as a Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries.
+        
+        1.  **🔍 Search:** Use **Intelligent Search** (below) to find which dataset a specific column (e.g., `OrgUnitId`) belongs to.
+        2.  **🗺️ Map:** Switch to the **Relationship Map** tab to visualize how tables connect via Primary/Foreign keys.
+        3.  **⚡ SQL:** Use the **SQL Builder** to select multiple datasets and automatically generate the correct `LEFT JOIN` syntax.
+        4.  **🤖 AI:** Unlock the **AI Assistant** to ask plain-language questions about the data model.
+        
+        **💡 Pro Tip:** Toggle **"Power User"** mode in the sidebar to reveal advanced tools like the *UDF Flattener* and *KPI Recipes*.
+        """)
+    # -------------------------------
     
     is_advanced = st.session_state['experience_mode'] == 'advanced'
     
