@@ -1608,17 +1608,37 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                             mime="application/sql"
                         )
 
-            # relationships table
+            # reelationships table
             join_data = get_joins_for_selection(df, selected_datasets)
             
-            # strict filtering, if inn Focused mode, ensures the Target is also in our selection
+            # stricter filtering: If in Focused mode, ensure the Target is also in our selection
             if mode == 'focused' and not join_data.empty:
                 join_data = join_data[join_data['Target Dataset'].isin(selected_datasets)]
 
             if not join_data.empty:
-                # expanded by default now because the data is highly relevant/filtered
                 with st.expander("📋 View Relationships Table", expanded=True):
-                    st.dataframe(join_data, use_container_width=True, hide_index=True)
+                    # -to detect and explain "parent" tables
+                    sources = set(join_data['Source Dataset'])
+                    targets = set(join_data['Target Dataset'])
+                    # finds datasets that are in the selection but ONLY appear as Targets
+                    parents = [ds for ds in selected_datasets if ds in targets and ds not in sources]
+                    
+                    if parents:
+                        st.info(f"ℹ️ **Note:** **{', '.join(parents)}** appear in the 'To Table' column because they are **Parent Tables** (they hold the Primary Key).")
+                    # ---------------------------------------------
+
+                    st.dataframe(
+                        join_data, 
+                        use_container_width=True, 
+                        hide_index=True,
+                        # rename headers to make direction clearer
+                        column_config={
+                            "Source Dataset": "From Table (Child)",
+                            "Join Column": "Join Key",
+                            "Target Dataset": "To Table (Parent)",
+                            "Target Category": "Parent Category"
+                        }
+                    )
             elif mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("📋 View Relationships Table"):
                     st.info("No direct joins found between these specific datasets.")
