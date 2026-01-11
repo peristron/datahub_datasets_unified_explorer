@@ -179,9 +179,8 @@ ENUM_DEFINITIONS = {
         1: "General", 2: "Specific", 3: "Program"
     }
 }
-# ... (existing ENUM_DEFINITIONS) ...
 
-# SQL Templates for common business metrics
+# SQL templates for common business metrics
 RECIPE_REGISTRY = {
     "Learner Engagement": [
         {
@@ -258,8 +257,32 @@ GROUP BY qo.Name, qua.QuestionId
 ORDER BY FailureRate DESC
 """
         }
+    ],
+    "Data Cleaning & Deduplication": [
+        {
+            "title": "Get Latest Row Version",
+            "description": "Many datasets (like Activity Feed) track edits using a 'Version' column. Use this pattern to filter for only the most recent version of each record.",
+            "datasets": ["Activity Feed Post Objects", "Content Objects", "Wiki Pages"],
+            "difficulty": "Advanced",
+            "sql_template": """
+WITH RankedRecords AS (
+    SELECT 
+        *,
+        -- Partition by the Primary Key, Order by Version DESC
+        ROW_NUMBER() OVER (
+            PARTITION BY ActivityId 
+            ORDER BY Version DESC
+        ) as RowNum
+    FROM ActivityFeedPostObjects
+)
+SELECT * 
+FROM RankedRecords 
+WHERE RowNum = 1 -- Keeps only the latest version
+"""
+        }
     ]
 }
+
 # =============================================================================
 # 3. session state management
 # =============================================================================
