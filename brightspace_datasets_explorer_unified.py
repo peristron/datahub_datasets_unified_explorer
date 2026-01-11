@@ -1501,12 +1501,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 if st.session_state['auth_error']:
                     st.error("Incorrect password.")
         
-        # cross-links (advanced mode only)
-        if is_advanced:
-            st.divider()
-            st.markdown("### 🔗 Related Tools")
-            st.link_button("🔎 CSV Query Tool", "https://csvexpl0rer.streamlit.app/")
-            st.link_button("✂️ CSV Splitter", "https://csvsplittertool.streamlit.app/")
            # cross-links (advanced mode only)
         if is_advanced:
             st.divider()
@@ -1522,9 +1516,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             # utilities, possibly related (for the same basic persona)
             c_t1, c_t2 = st.columns(2)
             with c_t1:
-                st.link_button("🔎 CSV SQL", "https://csvexpl0rer.streamlit.app/", help="Run SQL queries on CSV files.")
+                st.link_button("🔎 CSV Query Tool", "https://csvexpl0rer.streamlit.app/", help="Run SQL queries on CSV files.")
             with c_t2:
-                st.link_button("✂️ Splitter", "https://csvsplittertool.streamlit.app/", help="Split large CSVs into smaller chunks.") 
+                st.link_button("✂️ CSV Splitter", "https://csvsplittertool.streamlit.app/", help="Split large CSVs into smaller chunks.") 
     return view, selected_datasets
 
 
