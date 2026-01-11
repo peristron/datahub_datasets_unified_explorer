@@ -1,100 +1,111 @@
-# 🔗 Brightspace Dataset Explorer
+🔗 Brightspace Dataset Explorer
 
-**A Unified Schema Intelligence Engine for D2L/Brightspace Data Hub.**
+A Unified Schema Intelligence Engine for D2L/Brightspace Data Hub.
 
-> **Deployed:** [Streamlit Cloud Link]  
-> **Status:** Production Ready (v2.0)
+    Deployed: [Streamlit Cloud Link]
+    Status: Production Ready (v2.1)
 
 This application is a "Rosetta Stone" for Data Engineers, Analysts, and Architects working with Brightspace Data Sets (BDS). It bridges the gap between the raw Knowledge Base documentation and actionable SQL/Python code, providing a visual and interactive way to explore the complex Entity-Relationship model of the LMS.
+🚀 Key Features
+1. 🎛️ Experience Modes
 
----
+    🟢 Quick Explorer: A streamlined interface for general users. Focuses on the Dashboard, Visual Map, and AI Assistant.
+    🔷 Power User: Unlocks the full engineering toolkit, including the SQL Builder, Schema Browser, KPI Recipes, and UDF Flattener.
 
-## 🚀 Key Features
+2. 🗺️ Interactive Relationship Map
 
-### 1. 🗺️ Interactive Relationship Map
-*   **Visualize the invisible:** See how tables connect via Primary and Foreign Keys (PK/FK).
-*   **Modes:**
-    *   **Network Graph:** Force-directed graph showing direct connections.
-    *   **Solar System:** "Category" suns with dataset planets (good for discovery).
-    *   **Heatmap:** Density matrix of connections.
-*   **Export:** Download high-res PNGs or GraphViz (DOT) files for documentation tools (Visio/LucidChart).
+    Visualize the invisible: See how tables connect via Primary and Foreign Keys (PK/FK).
+    Modes:
+        Network Graph: Force-directed graph showing direct connections.
+        Solar System: "Category" suns with dataset planets (good for discovery).
+        Heatmap: Density matrix of connections.
+    Export: Download high-res PNGs or GraphViz (DOT) files for external diagramming tools.
 
-### 2. ⚡ Query Builder (SQL & Python)
-*   **Automated Joins:** Select 2+ datasets, and the engine calculates the shortest join path using NetworkX.
-*   **Polyglot Output:**
-    *   **SQL:** Generates `JOIN` syntax for T-SQL, Snowflake, or PostgreSQL.
-    *   **Python:** Generates `pandas.merge()` code for data scientists working with CSV exports.
+3. ⚡ Query Builder (SQL & Python)
 
-### 3. 🔧 UDF Flattener
-*   **The Problem:** D2L stores custom user data (Pronouns, Dept ID) in difficult-to-query EAV (Entity-Attribute-Value) tables.
-*   **The Solution:** A dedicated tool that generates the complex `MAX(CASE WHEN...)` SQL required to pivot these rows into clean columns.
+    Automated Joins: Select 2+ datasets, and the engine calculates the shortest join path using NetworkX.
+    Polyglot Output:
+        SQL: Generates JOIN syntax for T-SQL, Snowflake, or PostgreSQL.
+        Python: Generates pandas.merge() code for data scientists working with CSV exports.
 
-### 4. 🤖 AI Data Architect
-*   **Context-Aware:** The AI knows the specific schema and relationships of the datasets you are looking at.
-*   **Secure:** Only *metadata* (column names) is sent to the LLM. No actual row data ever leaves your browser or the app memory.
+4. ⚙️ Smart Data Management
 
-### 5. 📚 KPI Recipes
-*   A "Cookbook" of pre-written, verified SQL queries for common questions (e.g., "Learner Engagement," "Quiz Item Analysis").
+    Integrated Scraper: Fetches the latest schema definitions directly from the D2L Community Knowledge Base.
+    Backup & Restore: Download a snapshot of the current metadata schema as a CSV for offline analysis or version comparison.
 
----
+5. 🔧 UDF Flattener
 
-## 🛠️ Setup & Installation
+    The Problem: D2L stores custom user data (e.g., Pronouns, Dept ID) in EAV (Entity-Attribute-Value) tables.
+    The Solution: Generates the complex MAX(CASE WHEN...) SQL required to pivot these rows into clean columns.
 
-**Prerequisites:** Python 3.9+
+6. 🤖 AI Data Architect
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-repo/brightspace-explorer.git
-    cd brightspace-explorer
-    ```
+    Context-Aware: The AI uses the current schema metadata to answer questions about the data model.
+    Secure: Only metadata (column names/types) is sent to the LLM. No actual row data ever leaves your browser.
 
-2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+🛠️ Setup & Installation
 
-3.  **Configure Secrets:**
-    Create a file at `.streamlit/secrets.toml`:
-    ```toml
-    # Password to unlock AI features
-    app_password = "your_secure_password"
-    
-    # API Keys (Optional - user can enter in UI if not set here)
-    openai_api_key = "sk-..."
-    xai_api_key = "..."
-    ```
+Prerequisites: Python 3.9+
 
-4.  **Run the App:**
-    ```bash
+    Clone the repository:
+
+Bash
+
+git clone https://github.com/your-repo/brightspace-explorer.git
+cd brightspace-explorer
+
+Install dependencies:
+
+Bash
+
+pip install -r requirements.txt
+
+Configure Secrets:
+Create a file at .streamlit/secrets.toml:
+
+toml
+
+# Password to unlock AI features
+app_password = "your_secure_password"
+
+# API Keys (Optional - user can enter in UI if not set here)
+openai_api_key = "sk-..."
+xai_api_key = "..."
+
+Run the App:
+
+Bash
+
     streamlit run unified_dataset_explorer.py
-    ```
 
----
+🚦 First Run / Initialization
 
-## 📂 File Structure
+When you launch the application for the first time, it will be empty because no schema metadata has been loaded yet.
 
-*   `unified_dataset_explorer.py` - The main application monolith (streamlined for Streamlit Cloud).
-*   `dataset_metadata.csv` - The cached schema definitions (generated by the internal scraper).
-*   `requirements.txt` - Python package dependencies.
+    Open the Sidebar on the left.
+    Expand the ⚙️ Data Management section.
+    Click 🔄 Scrape & Update All URLs.
+    Wait approx. 30 seconds for the scraper to fetch definitions from the D2L Knowledge Base.
+    Once complete, the dashboard will populate, and you can begin exploring.
 
----
+📂 File Structure
 
-## 🔗 The Ecosystem
+    unified_dataset_explorer.py - The main application monolith (streamlined for Streamlit Cloud).
+    dataset_metadata.csv - The cached schema definitions (generated by the internal scraper).
+    requirements.txt - Python package dependencies.
+
+🔗 The Ecosystem
 
 This tool is part of a larger Data Intelligence suite:
 
-*   **Brightspace Explorer:** (This Tool) For Schema Mapping, SQL Gen, and Architecture.
-*   **[Signal Foundry](https://signalfoundry.streamlit.app/):** For Unstructured Text Analysis (Discussion posts, Survey comments).
-*   **CSV SQL Tool:** For rapid ad-hoc querying of flat files.
+    Brightspace Explorer: (This Tool) For Schema Mapping, SQL Gen, and Architecture.
+    Signal Foundry: For Unstructured Text Analysis (Discussion posts, Survey comments).
+    CSV SQL Tool: For rapid ad-hoc querying of flat files.
 
----
+⚠️ Limitations & Caveats
 
-## ⚠️ Limitations & Caveats
+    Metadata Only: This tool operates on the documentation of the datasets, not your live database. It cannot preview rows of data.
+    Standard Schema: Custom columns created by your SIS integration (e.g., Oracle_ID_Custom) will not appear here, as they are not in the public D2L Knowledge Base.
+    Manual Field IDs: For the UDF Flattener, you must manually input your specific Field IDs (e.g., 4, 9) because the scraper cannot see your private configuration values.
 
-1.  **Metadata Only:** This tool operates on the *documentation* of the datasets, not your live database. It cannot preview rows of data.
-2.  **Standard Schema:** Custom columns created by your SIS integration (e.g., `Oracle_ID_Custom`) will not appear here, as they are not in the public D2L Knowledge Base.
-3.  **Manual Field IDs:** For the **UDF Flattener**, you must manually input your specific Field IDs (e.g., `4`, `9`) because the scraper cannot see your private configuration values.
-
----
-
-*Open Source software licensed under the MIT License.*
+Open Source software licensed under the MIT License.
