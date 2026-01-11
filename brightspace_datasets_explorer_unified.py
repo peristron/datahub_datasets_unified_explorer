@@ -1386,38 +1386,38 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         with st.expander("⚙️ Data Management", expanded=df.empty):
             pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
             
-            c_scrape, c_download = st.columns(2)
+            # button 1 scrape and update (stacked, full width)
+            if st.button("🔄 Scrape & Update All URLs", type="primary", use_container_width=True, help="Scrape the URLs listed above, add any new datasets found, and refresh the schema."):
+                urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
+                if urls:
+                    with st.spinner(f"Scraping {len(urls)} pages..."):
+                        new_df = scrape_and_save(urls)
+                        if not new_df.empty:
+                            st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
+                            load_data.clear()
+                            st.rerun()
+                else:
+                    st.error("No valid URLs found")
             
-            with c_scrape:
-                if st.button("🔄 Scrape All URLs above, add new URLs if needed", type="primary"):
-                    urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
-                    if urls:
-                        with st.spinner(f"Scraping {len(urls)} pages..."):
-                            new_df = scrape_and_save(urls)
-                            if not new_df.empty:
-                                st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
-                                load_data.clear()
-                                st.rerun()
-                    else:
-                        st.error("No valid URLs found")
-            
-            with c_download:
-                if not df.empty:
-                    # generates timestamp for filename
-                    timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
-                    
-                    # converts dataframe to CSV for download
-                    csv = df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="💾  Save Backup CSV, e.g. for comparisons",
-                        data=csv,
-                        file_name=f"brightspace_metadata_backup_{timestamp}.csv",
-                        mime="text/csv",
-                        help="Save this file. Upload it in the 'Schema Diff' tab later to see what changed."
-                    )
-
-        
-        # ----------------------------------------------------
+            # button 2, download backup (stacked, full width format)
+            if not df.empty:
+                # generates timestamp for filename
+                timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
+                
+                # converts dataframe to CSV for download
+                csv = df.to_csv(index=False).encode('utf-8')
+                
+                # Visual spacer between buttons
+                st.write("") 
+                
+                st.download_button(
+                    label="💾 Download Metadata Backup (CSV)",
+                    data=csv,
+                    file_name=f"brightspace_metadata_backup_{timestamp}.csv",
+                    mime="text/csv",
+                    help="Save a backup of the current schema state. Useful for comparisons or offline analysis.",
+                    use_container_width=True
+                )
         
         # dataset selection (when applicable)
         selected_datasets = []
