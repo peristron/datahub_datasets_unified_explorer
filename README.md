@@ -1,111 +1,101 @@
-Here is a comprehensive `README.md` tailored to the application's features and the specific "Power User" workflows we just polished.
+🔗 Unified Brightspace Dataset Explorer
 
-***
+The ultimate "GPS" and Workbench for D2L Brightspace Data Hub.
 
-# 🔗 Unified Brightspace Dataset Explorer
+The Brightspace Dataset Explorer is a professional-grade Streamlit application designed to help Data Engineers, Analysts, and EdTech admins master the 140+ datasets in the D2L Data Hub. It goes beyond simple documentation by providing interactive visualization, semantic translation, and automated code generation.
+✨ Key Features
+1. 🗺️ Interactive Relationship Map
 
-**A visual "GPS" for D2L Brightspace Data Hub datasets.**
+    Visualize the Network: See how tables connect via Primary and Foreign Keys.
+    Bridge Finder: Selected two unrelated tables? The app automatically finds the "missing link" (intermediate table) needed to join them.
+    Templates: One-click starter packs for common domains (Grades, Engagement, Quizzes).
 
-The **Brightspace Dataset Explorer** is a Streamlit application designed to help Data Engineers, Educational Technologists, and Analysts navigate the complex web of 140+ D2L Data Hub datasets. It scrapes the official documentation, visualizes relationships, and automatically generates the SQL needed to join tables together.
+2. ⚡ SQL Builder & Dialect Switching
 
-## 🚀 Key Features
+    Auto-Joins: Select any combination of datasets; the app calculates the shortest path and writes the SQL.
+    Multi-Dialect: Generates syntax for T-SQL (SQL Server), Snowflake, or PostgreSQL.
+    Download: Export .sql files directly to your machine.
 
-### 1. 🕷️ Dynamic Metadata Scraper
-- Automatically scrapes the [D2L Community Knowledge Base](https://community.d2l.com/) to build a live schema of the Data Hub.
-- Parses Primary Keys (PK) and Foreign Keys (FK) to infer relationships between tables.
-- Categorizes datasets (e.g., *Users, Grades, Content, Outcomes*).
+3. 📚 KPI Recipes (Cookbook)
 
-### 2. 🗺️ Interactive Relationship Maps
-- **Network Graph:** Visualize how tables connect. Uses a physics-based spring layout to cluster related datasets.
-- **Orbital Map:** A "Solar System" view where datasets orbit their parent Categories.
-- **Focused Mode:** Filter the noise to see only the connections between specific datasets you care about.
-- **Bridge Finder:** Automatically suggests intermediate tables to link two disconnected datasets.
+    Business Logic: Don't just join tables—solve problems. Includes pre-written queries for:
+        Learner Engagement (Last access, course activity)
+        Assessments (Quiz item analysis, grade distribution)
+    Data Cleaning: Special recipes for handling D2L's Row Versioning (deduplication).
 
-### 3. ⚡ Instant SQL Generator
-- Select any combination of datasets (e.g., *Users + Grades + OrgUnits*).
-- The app calculates the shortest join path and generates production-ready **SQL JOIN** syntax.
-- **Download .sql files** directly from the UI.
+4. 🕵️ Semantic "Decoder Ring"
 
-### 4. 🤖 AI Data Architect
-- Integrated AI Assistant (OpenAI/xAI) locked behind a secure login.
-- Context-aware: The AI knows the schema and relationships of the datasets you are currently viewing.
-- Ask questions like *"How do I calculate time-in-content for a specific course?"*
+    No More Magic Numbers: Automatically detects Enum columns (like GradeObjectTypeId or SessionType) and displays a cheat sheet of their values (e.g., 1 = Numeric, 2 = Pass/Fail).
 
-### 5. 🔍 Schema Browser & Intelligent Search
-- Search for any column (e.g., `OrgUnitId`, `OutcomeId`) to find every dataset it belongs to.
-- Identify "Orphan" datasets that have no detected relationships.
+5. ✨ Schema Version Diff
 
----
+    Track Changes: Download a baseline of the metadata today. Upload it next month to see exactly which datasets or columns D2L added or removed.
+    Safe Upgrades: Prevents your pipelines from breaking silently.
 
-## 🛠️ Installation
+6. 🤖 AI Data Architect
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-repo/brightspace-explorer.git
-   cd brightspace-explorer
-   ```
+    Context-Aware AI: A secure chat interface (OpenAI/xAI) that "knows" the specific schema relationships you are currently viewing.
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-   *(Dependencies include: streamlit, pandas, networkx, plotly, beautifulsoup4, requests, openai)*
+🛠️ Installation
 
-3. **Run the application:**
-   ```bash
-   streamlit run unified_dataset_explorer.py
-   ```
+    Clone the repository:
 
----
+Bash
 
-## ⚙️ Configuration
+git clone https://github.com/your-repo/brightspace-explorer.git
+cd brightspace-explorer
 
-To enable the AI Assistant and the Admin Login, you must configure your secrets. 
+Install dependencies:
 
-Create a file at `.streamlit/secrets.toml`:
+Bash
 
-```toml
-# Password to unlock the AI Assistant tab
+pip install -r requirements.txt
+
+(Requires: streamlit, pandas, networkx, plotly, beautifulsoup4, requests, openai)
+
+Run the application:
+
+Bash
+
+    streamlit run unified_dataset_explorer.py
+
+⚙️ Configuration
+
+To enable the AI Assistant, configure your API keys in .streamlit/secrets.toml:
+
+toml
+
+# Admin Password for the AI Tab
 app_password = "your_secure_password"
 
-# API Keys (Only one is strictly required if you want AI features)
+# API Keys (Only one required)
 openai_api_key = "sk-..."
 xai_api_key = "..."
-```
 
----
+📖 Recommended Workflow
+For New Explorers:
 
-## 📖 User Guide
+    Go to Data Management in the sidebar and click "🔄 Scrape All URLs" to initialize the database.
+    Switch to "🔷 Power User" mode.
+    Navigate to "🗺️ Relationship Map".
+    Select a Template (e.g., "Grades & Feedback").
+    Visualise connections and click "⚡ Get SQL for this View" to generate the query.
 
-### The "Power User" Workflow
-For the most efficient experience in finding connections:
+For Maintenance (Monthly Updates):
 
-1.  **Select Mode:** Switch to **"🔷 Power User"** in the sidebar.
-2.  **Navigate:** Go to **"🗺️ Relationship Map"**.
-3.  **Choose a Template:** In the sidebar, select a **Template** (e.g., *Grades & Feedback*) or manually select datasets.
-4.  **Analyze:** The graph will show how these tables connect. 
-    *   *Don't see a line?* Use the **"🕵️ Find Missing Link"** button to find the bridge table.
-5.  **Export:** Expand the **"⚡ Get SQL for this View"** section below the graph and click **Download SQL**.
+    Go to "✨ Schema Diff".
+    Upload your brightspace_metadata_backup.csv from the previous month.
+    Review the "New Columns" and "New Datasets" report.
 
-### Data Management
-If the application shows "No data loaded":
-1.  Open the **Data Management** expander in the sidebar.
-2.  Click **"🔄 Scrape All URLs"**.
-3.  The app will fetch the latest definitions from D2L and save them locally to `dataset_metadata.csv`.
+🧠 Technical Architecture
 
----
+    Scraper: Threaded BeautifulSoup scraper that parses D2L Knowledge Base HTML tables.
+    Graph Engine: NetworkX handles pathfinding (shortest path algorithms) and centrality metrics.
+    Visualization: Plotly Spring Layouts for dynamic, physics-based network rendering.
+    Security: Implements "Decoy Input" strategies to prevent browser password managers from interfering with UI dropdowns.
 
-## 🧠 Technical Details
+📄 License
 
-*   **Graph Theory:** Uses `NetworkX` to calculate shortest paths and connectivity centrality (identifying "Hub" datasets).
-*   **Visualization:** Uses `Plotly` for interactive, zoomable graphs.
-*   **Browser Security:** Implements form isolation and "decoy inputs" to prevent browser password managers from interfering with dataset selection dropdowns.
-*   **Caching:** Heavily leverages `@st.cache_data` to ensure instant graph rendering even with 1,600+ columns.
+MIT License
 
----
-
-## 📄 License
-
-[MIT License](LICENSE)
-
-*Disclaimer: This tool is an unofficial utility and is not affiliated with or endorsed by D2L Corporation.*
+Disclaimer: This tool is an unofficial utility and is not affiliated with or endorsed by D2L Corporation.
