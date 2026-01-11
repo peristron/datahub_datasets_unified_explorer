@@ -2058,7 +2058,7 @@ def render_schema_browser(df: pd.DataFrame):
         
         all_ds = sorted(df['dataset_name'].unique())
         
-        # selectbox -> multiselect to allow multiple schemas at once
+        # multiselect for comparing multiple schemas side-by-side
         selected_ds_list = st.multiselect(
             "Select Datasets", 
             options=all_ds,
@@ -2073,7 +2073,7 @@ def render_schema_browser(df: pd.DataFrame):
                 if i > 0:
                     st.divider()
                 
-                # Header for the specific dataset
+                # header for the specific dataset
                 st.markdown(f"### 📦 {selected_ds}")
                 
                 subset = df[df['dataset_name'] == selected_ds]
@@ -2118,11 +2118,12 @@ def render_schema_browser(df: pd.DataFrame):
                 display_cols = ['column_name', 'data_type', 'description', 'key']
                 available_cols = [c for c in display_cols if c in subset.columns]
                 
+                # fixed height (400) to prevent crashes
                 st.dataframe(
                     subset[available_cols], 
                     use_container_width=True, 
                     hide_index=True,
-                    height=None # set to "none" so it auto-expands to show all rows
+                    height=400 
                 )
                 
                 # pk/fk breakdown
