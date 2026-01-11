@@ -1815,18 +1815,72 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                             else:
                                 st.error("No direct bridge found. These datasets might be unrelated.")
 
+
             # graph generation
             if mode == 'focused':
                 st.caption("Showing direct PK-FK connections between selected datasets only.")
             else:
                 st.caption("Showing all datasets that your selection connects to via foreign keys.")
             
+            # configure Plotly to allow high-res download via the client-side toolbar
+            config = {
+                'toImageButtonOptions': {
+                    'format': 'png', # 1 of png, svg, jpeg, webp
+                    'filename': 'brightspace_entity_diagram',
+                    'height': 1200,
+                    'width': 1600,
+                    'scale': 2 # multiply title/legend/axis/canvas sizes by this factor
+                }
+            }
+            
             fig = create_spring_graph(
                 df, selected_datasets, mode,
                 graph_font_size, node_separation, graph_height, show_edge_labels
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=config)
             
+            # --- graph export--
+            with st.expander("📤 Export Diagram (Visio / LucidChart / PNG)"):
+                c_dot, c_png = st.columns([2, 1])
+                
+                with c_png:
+                    st.info("📷 **To get a PNG Image:**\nHover over the graph above and click the Camera icon (📸) in the top-right corner. It is configured for high-res export.")
+
+                with c_dot:
+                    st.markdown("#### GraphViz / DOT Export")
+                    st.caption("Copy this code into **LucidChart** (Import -> GraphViz), **Visio**, or **WebGraphViz** to create editable diagrams.")
+                    
+                    # 1 re-generates lightweight logic to build the DOT string
+                    dot_lines = ["digraph BrightspaceData {", "  rankdir=LR;", "  node [shape=box, style=filled, color=lightblue];"]
+                    
+                    # get relationships
+                    export_joins = get_joins_for_selection(df, selected_datasets)
+                    
+                    # adds nodes
+                    for ds in selected_datasets:
+                        dot_lines.append(f'  "{ds}" [label="{ds}"];')
+                        
+                    # add eedges
+                    if not export_joins.empty:
+                        for _, row in export_joins.iterrows():
+                            # filters based on mode
+                            s, t, k = row['Source Dataset'], row['Target Dataset'], row['Join Column']
+                            
+                            # logic matches the graph display logic
+                            if mode == 'focused':
+                                if s in selected_datasets and t in selected_datasets:
+                                    dot_lines.append(f'  "{s}" -> "{t}" [label="{k}", fontsize=10];')
+                            else:
+                                if s in selected_datasets:
+                                    dot_lines.append(f'  "{s}" -> "{t}" [label="{k}", fontsize=10];')
+                    
+                    dot_lines.append("}")
+                    dot_string = "\n".join(dot_lines)
+                    
+                    st.text_area("DOT Code", dot_string, height=150)
+                    st.download_button("📥 Download .gv File", dot_string, "diagram.gv")
+            # -----------------------------------
+
             # 4. integrated SQL generation
             if mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("⚡ Get SQL for this View", expanded=False):
