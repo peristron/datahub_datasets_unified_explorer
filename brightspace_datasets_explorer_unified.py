@@ -2482,9 +2482,10 @@ def main():
         render_kpi_recipes(df)
     elif view == "⚡ SQL Builder":
         render_sql_builder(df, selected_datasets)
+    elif view == "🔧 UDF Flattener":
+        render_udf_flattener(df)
     elif view == "🤖 AI Assistant":
-        render_ai_assistant(df, selected_datasets)
-
+        render_ai_assistant(df, selected_datasets)    
 
 if __name__ == "__main__":
     main()
