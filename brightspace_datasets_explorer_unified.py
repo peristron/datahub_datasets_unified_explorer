@@ -1053,57 +1053,72 @@ def create_relationship_matrix(df: pd.DataFrame) -> go.Figure:
 
 # =============================================================================
 # 8. sql builder engine
-# =============================================================================
+# ==
+def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
+    """renders the sql builder interface."""
+    st.header("⚡ SQL Builder")
+    
+    if not selected_datasets:
+        st.info("👈 Select 2 or more datasets from the sidebar to generate SQL joins.")
 
-def generate_sql(selected_datasets: List[str], df: pd.DataFrame) -> str:
-    """
-    generates a deterministic sql join query based on the graph relationships.
-    uses a 'greedy' approach: connect each new table to the existing joined cluster.
-    """
-    if len(selected_datasets) < 2:
-        return "-- please select at least 2 datasets to generate a join."
-    
-    # build the full connection graph
-    G_full = nx.Graph()
-    joins = get_joins(df)
-    
-    if not joins.empty:
-        for _, r in joins.iterrows():
-            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
-    
-    # initialize query
-    base_table = selected_datasets[0]
-    aliases = {ds: f"t{i+1}" for i, ds in enumerate(selected_datasets)}
-    
-    sql_lines = [f"SELECT TOP 100", f"    {aliases[base_table]}.*"]
-    sql_lines.append(f"FROM {base_table} {aliases[base_table]}")
-    
-    joined_tables = {base_table}
-    remaining_tables = selected_datasets[1:]
-    
-    for current_table in remaining_tables:
-        found_connection = False
+
         
-        for existing_table in joined_tables:
-            if G_full.has_edge(current_table, existing_table):
-                key = G_full[current_table][existing_table]['key']
-                sql_lines.append(
-                    f"LEFT JOIN {current_table} {aliases[current_table]} "
-                    f"ON {aliases[existing_table]}.{key} = {aliases[current_table]}.{key}"
-                )
-                joined_tables.add(current_table)
-                found_connection = True
-                break
+        # quick select interface
+        st.subheader("Quick Select")
+        all_ds = sorted(df['dataset_name'].unique())
+        quick_select = st.multiselect("Select datasets here:", all_ds, key="sql_quick_select")
         
-        if not found_connection:
-            sql_lines.append(
-                f"CROSS JOIN {current_table} {aliases[current_table]} "
-                f"-- ⚠️ no direct relationship found in metadata"
-            )
-            joined_tables.add(current_table)
+        if quick_select:
+            selected_datasets = quick_select
+    
+    if selected_datasets:
+        if len(selected_datasets) < 2:
+            st.warning("Select at least 2 datasets to generate a JOIN query.")
+        else:
+            # show selected datasets
+            st.markdown(f"**Selected:** {', '.join(selected_datasets)}")
             
-    return "\n".join(sql_lines)
-
+            # --- NEW: Dialect Selection ---
+            col_opts, _ = st.columns([1, 3])
+            with col_opts:
+                dialect = st.selectbox(
+                    "Target Database Dialect", 
+                    ["T-SQL", "Snowflake", "PostgreSQL"],
+                    help="Adjusts syntax for quotes ([], \"\") and limits (TOP vs LIMIT)."
+                )
+            # ------------------------------
+            
+            # generate sql with dialect
+            sql_code = generate_sql(selected_datasets, df, dialect)
+            
+            col_sql, col_schema = st.columns([2, 1])
+            
+            with col_sql:
+                st.markdown("#### Generated SQL")
+                st.code(sql_code, language="sql")
+                
+                # download button
+                st.download_button(
+                    label=f"📥 Download {dialect} Query",
+                    data=sql_code,
+                    file_name=f"brightspace_query_{dialect.lower()}.sql",
+                    mime="application/sql"
+                )
+            
+            with col_schema:
+                st.markdown("#### Field Reference")
+                
+                for ds in selected_datasets:
+                    with st.expander(f"📦 {ds}", expanded=False):
+                        subset = df[df['dataset_name'] == ds]
+                        display_cols = ['column_name', 'data_type', 'key']
+                        available_cols = [c for c in display_cols if c in subset.columns]
+                        st.dataframe(subset[available_cols], hide_index=True, use_container_width=True, height=200)
+            
+            # show join visualization
+            with st.expander("🗺️ Join Visualization"):
+                fig = create_spring_graph(df, selected_datasets, 'focused', 12, 1.0, 400, True)
+                st.plotly_chart(fig, use_container_width=True)
 # =============================================================================
 # 9. view controllers (modular ui)
 # =============================================================================
