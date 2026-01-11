@@ -1335,7 +1335,7 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
 def render_sidebar(df: pd.DataFrame) -> tuple:
     """renders the sidebar navigation and returns (view, selected_datasets)."""
     with st.sidebar:
-        st.title("🔗 Dataset Explorer")
+        st.title("🔗 Datahub Datasets Explorer")
         
         # experience mode toggle
         st.session_state['experience_mode'] = st.radio(
