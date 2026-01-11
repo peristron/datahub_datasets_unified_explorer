@@ -1822,8 +1822,18 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
             # show selected datasets
             st.markdown(f"**Selected:** {', '.join(selected_datasets)}")
             
-            # generate sql
-            sql_code = generate_sql(selected_datasets, df)
+            # --- NEW: Dialect Selection ---
+            col_opts, _ = st.columns([1, 3])
+            with col_opts:
+                dialect = st.selectbox(
+                    "Target Database Dialect", 
+                    ["T-SQL", "Snowflake", "PostgreSQL"],
+                    help="Adjusts syntax for quotes ([], \"\") and limits (TOP vs LIMIT)."
+                )
+            # ------------------------------
+            
+            # generate sql with dialect
+            sql_code = generate_sql(selected_datasets, df, dialect)
             
             col_sql, col_schema = st.columns([2, 1])
             
@@ -1831,11 +1841,11 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                 st.markdown("#### Generated SQL")
                 st.code(sql_code, language="sql")
                 
-                # adding download button
+                # adding download button with dynamic filename
                 st.download_button(
-                    label="📥 Download .sql File",
+                    label=f"📥 Download {dialect} Query",
                     data=sql_code,
-                    file_name="brightspace_query.sql",
+                    file_name=f"brightspace_query_{dialect.lower()}.sql",
                     mime="application/sql"
                 )
             
