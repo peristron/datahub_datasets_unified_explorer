@@ -1389,7 +1389,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             c_scrape, c_download = st.columns(2)
             
             with c_scrape:
-                if st.button("🔄 Scrape All URLs", type="primary"):
+                if st.button("🔄 Scrape All URLs above, add new URLs if needed", type="primary"):
                     urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
                     if urls:
                         with st.spinner(f"Scraping {len(urls)} pages..."):
