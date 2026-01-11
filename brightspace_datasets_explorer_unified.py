@@ -2443,23 +2443,35 @@ def render_kpi_recipes(df: pd.DataFrame):
 def render_udf_flattener(df: pd.DataFrame):
     """renders the EAV pivot tool for user defined fields."""
     st.header("🔧 UDF Flattener")
-    st.markdown("""
-    **The Problem:** D2L stores custom data in "Entity-Attribute-Value" (EAV) rows (e.g., `UserId`, `FieldId`, `Value`).
-    **The Solution:** This tool generates the `CASE WHEN` SQL statements needed to pivot these rows into a clean column format.
-    """)
     
-    # --- contextual help/caveat ---
-    with st.expander("ℹ️ How does this work? (Read First)", expanded=True):
-        st.info("""
-        **Why do I have to type the fields manually?**
+    # --- NEW: Clearer, Visual Help Text ---
+    st.markdown("Transform 'vertical' custom data lists into standard 'horizontal' tables.")
+    
+    with st.expander("ℹ️ How to use & Where to find Field IDs", expanded=True):
+        c_concept, c_action = st.columns([1, 1])
         
-        This application only reads the **Schema** (column names) of your datasets, not the **Data** (rows). 
-        
-        1. We can guess the **Tables** (e.g., `UserUserDefinedFields`) based on standard naming conventions.
-        2. We **cannot** know your specific custom fields (e.g., that Field ID `4` is "Department" or Field ID `9` is "Pronouns").
-        
-        **Workflow:** You must look up your specific Field IDs (usually found in `UserDefinedFields`) and enter them in Step 3 below.
-        """)
+        with c_concept:
+            st.markdown("**1. The Concept (Pivoting)**")
+            st.code("""
+# BEFORE (Vertical EAV)
+UserId | FieldId | Value
+101    | 4       | "Marketing"
+101    | 9       | "He/Him"
+
+# AFTER (Flattened)
+UserId | Dept_Marketing | Pronouns_HeHim
+101    | "Marketing"    | "He/Him"
+            """, language="text")
+            
+        with c_action:
+            st.markdown("**2. Finding your Field IDs**")
+            st.caption("Since this app cannot see your data, you must look up your specific Field IDs in your database.")
+            st.markdown("Run this SQL in your environment:")
+            st.code("""
+SELECT FieldId, Name 
+FROM UserDefinedFields
+-- Look for IDs like 4, 9, 12...
+            """, language="sql")
     # ---------------------------------------
     
     st.divider()
@@ -2514,7 +2526,7 @@ def render_udf_flattener(df: pd.DataFrame):
     with col_fields:
         if input_type == "IDs (Integers)":
             placeholder = "e.g. 1, 4, 9, 12"
-            help_text = "Enter the Field IDs you want to turn into columns. You can find these IDs in the 'UserDefinedFields' dataset."
+            help_text = "Enter the Field IDs you found using the SQL tip above."
         else:
             placeholder = "e.g. Pronouns, Department, Start Date"
             help_text = "Enter the exact Names of the fields you want to turn into columns. These must match the data exactly."
