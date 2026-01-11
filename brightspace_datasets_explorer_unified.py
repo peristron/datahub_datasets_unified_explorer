@@ -1375,7 +1375,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             except:
                 last_updated = "Unknown"
 
-            st.success(f"✅ **{len(df['dataset_name'].nunique())}** Datasets Loaded")
+            # removed len(), just use nunique() directly
+            st.success(f"✅ **{df['dataset_name'].nunique()}** Datasets Loaded")
             st.caption(f"📅 Schema updated: {last_updated}")
             st.caption(f"🔢 Total Columns: {len(df):,}")
         else:
@@ -1383,12 +1384,12 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # --data mgmt, Backup Button--
         with st.expander("⚙️ Data Management", expanded=df.empty):
-            pasted_text = st.text_area("URLs to Scrape (add any newly released URLs for Categories as needed)", height=100, value=DEFAULT_URLS)
+            pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
             
             c_scrape, c_download = st.columns(2)
             
             with c_scrape:
-                if st.button("🔄 Scrape All the URLs above", type="primary"):
+                if st.button("🔄 Scrape All URLs", type="primary"):
                     urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
                     if urls:
                         with st.spinner(f"Scraping {len(urls)} pages..."):
@@ -1402,15 +1403,20 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             
             with c_download:
                 if not df.empty:
+                    # generates timestamp for filename
+                    timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
+                    
                     # converts dataframe to CSV for download
                     csv = df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="💾 Save Backup CSV",
                         data=csv,
-                        file_name="brightspace_metadata_backup.csv",
+                        file_name=f"brightspace_metadata_backup_{timestamp}.csv",
                         mime="text/csv",
                         help="Save this file. Upload it in the 'Schema Diff' tab later to see what changed."
                     )
+
+        
         # ----------------------------------------------------
         
         # dataset selection (when applicable)
