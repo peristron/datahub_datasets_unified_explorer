@@ -1795,6 +1795,30 @@ def render_schema_browser(df: pd.DataFrame):
             with col_stats:
                 show_relationship_summary(df, selected_ds)
             
+            # --- enum 'decoder ring'---
+            # checks if any columns in this dataset match our known Enum definitions
+            ds_columns = subset['column_name'].tolist()
+            found_enums = {col: ENUM_DEFINITIONS[col] for col in ds_columns if col in ENUM_DEFINITIONS}
+            
+            if found_enums:
+                with st.expander("💡 Column Value Decoders", expanded=True):
+                    st.caption("This dataset contains columns with coded integer values. Here's what they mean:")
+                    
+                    # create tabs if multiple enums found, otherwise just show one
+                    if len(found_enums) > 1:
+                        tabs = st.tabs(list(found_enums.keys()))
+                        for i, (col_name, mapping) in enumerate(found_enums.items()):
+                            with tabs[i]:
+                                enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
+                                st.dataframe(enum_df, hide_index=True, use_container_width=True)
+                    else:
+                        col_name = list(found_enums.keys())[0]
+                        mapping = found_enums[col_name]
+                        st.markdown(f"**{col_name}**")
+                        enum_df = pd.DataFrame(list(mapping.items()), columns=["Value (ID)", "Meaning"])
+                        st.dataframe(enum_df, hide_index=True, use_container_width=True)
+            # ------------------------------
+
             # schema table
             st.markdown("#### Schema")
             display_cols = ['column_name', 'data_type', 'description', 'key']
