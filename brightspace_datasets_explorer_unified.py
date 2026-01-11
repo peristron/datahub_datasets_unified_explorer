@@ -179,6 +179,87 @@ ENUM_DEFINITIONS = {
         1: "General", 2: "Specific", 3: "Program"
     }
 }
+# ... (existing ENUM_DEFINITIONS) ...
+
+# SQL Templates for common business metrics
+RECIPE_REGISTRY = {
+    "Learner Engagement": [
+        {
+            "title": "Course Access Frequency",
+            "description": "Counts how many times each student accessed a specific course, including their last access date.",
+            "datasets": ["Users", "Organizational Units", "Course Access"],
+            "difficulty": "Intermediate",
+            "sql_template": """
+SELECT 
+    u.UserName,
+    o.Name AS CourseName,
+    COUNT(ca.CourseAccessId) AS TotalLogins,
+    MAX(ca.LastAccessed) AS LastLoginDate
+FROM CourseAccess ca
+INNER JOIN Users u ON ca.UserId = u.UserId
+INNER JOIN OrganizationalUnits o ON ca.OrgUnitId = o.OrgUnitId
+GROUP BY u.UserName, o.Name
+ORDER BY TotalLogins DESC
+"""
+        },
+        {
+            "title": "Inactive Students (At-Risk)",
+            "description": "Identifies students who have not accessed the system in the last 30 days.",
+            "datasets": ["Users", "System Access Log"],
+            "difficulty": "Basic",
+            "sql_template": """
+SELECT 
+    u.UserName,
+    u.FirstName,
+    u.LastName,
+    MAX(sal.Timestamp) AS LastSystemAccess
+FROM Users u
+LEFT JOIN SystemAccessLog sal ON u.UserId = sal.UserId
+GROUP BY u.UserName, u.FirstName, u.LastName
+HAVING MAX(sal.Timestamp) < DATEADD(day, -30, GETDATE()) -- Note: Syntax varies by DB
+"""
+        }
+    ],
+    "Assessments & Grades": [
+        {
+            "title": "Grade Distribution by Course",
+            "description": "Calculates the average grade for each course offering to identify outliers.",
+            "datasets": ["Grade Objects", "Grade Results", "Organizational Units"],
+            "difficulty": "Intermediate",
+            "sql_template": """
+SELECT 
+    o.Name AS CourseName,
+    go.Name AS AssignmentName,
+    AVG(gr.PointsNumerator) AS AverageScore,
+    COUNT(gr.UserId) AS SubmissionCount
+FROM GradeResults gr
+JOIN GradeObjects go ON gr.GradeObjectId = go.GradeObjectId
+JOIN OrganizationalUnits o ON go.OrgUnitId = o.OrgUnitId
+WHERE go.GradeObjectTypeId = 1 -- Numeric Grades only
+GROUP BY o.Name, go.Name
+"""
+        },
+        {
+            "title": "Quiz Item Analysis",
+            "description": "Analyzes which specific questions (InteractionIds) are most frequently answered incorrectly.",
+            "datasets": ["Quiz Attempts", "Quiz User Answers", "Quiz Objects"],
+            "difficulty": "Advanced",
+            "sql_template": """
+SELECT 
+    qo.Name AS QuizName,
+    qua.QuestionId,
+    COUNT(CASE WHEN qua.IsCorrect = 0 THEN 1 END) AS IncorrectCount,
+    COUNT(qua.AttemptId) AS TotalAttempts,
+    (COUNT(CASE WHEN qua.IsCorrect = 0 THEN 1 END) * 100.0 / COUNT(qua.AttemptId)) AS FailureRate
+FROM QuizUserAnswers qua
+JOIN QuizAttempts qa ON qua.AttemptId = qa.AttemptId
+JOIN QuizObjects qo ON qa.QuizId = qo.QuizId
+GROUP BY qo.Name, qua.QuestionId
+ORDER BY FailureRate DESC
+"""
+        }
+    ]
+}
 # =============================================================================
 # 3. session state management
 # =============================================================================
