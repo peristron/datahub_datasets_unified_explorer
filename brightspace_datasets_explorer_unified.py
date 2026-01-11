@@ -2153,7 +2153,69 @@ SCHEMA DATA:
                 
             except Exception as e:
                 st.error(f"AI Error: {str(e)}")
-
+                
+def render_kpi_recipes(df: pd.DataFrame):
+    """renders the cookbook of sql recipes."""
+    st.header("📚 KPI Recipes")
+    st.markdown("Pre-packaged SQL queries for common educational analysis questions.")
+    
+    # category filter
+    all_cats = list(RECIPE_REGISTRY.keys())
+    selected_cat = st.radio("Category", all_cats, horizontal=True, label_visibility="collapsed")
+    
+    recipes = RECIPE_REGISTRY[selected_cat]
+    
+    st.divider()
+    
+    for recipe in recipes:
+        with st.container():
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                st.subheader(recipe["title"])
+                st.write(recipe["description"])
+                
+                # tags
+                tags = [f"📊 {d}" for d in recipe["datasets"]]
+                tags.append(f"⚡ {recipe['difficulty']}")
+                st.caption(" • ".join(tags))
+                
+            with c2:
+                # dialect toggle per recipe
+                dialect = st.selectbox(
+                    "Dialect", 
+                    ["T-SQL", "Snowflake", "PostgreSQL"], 
+                    key=f"rec_{recipe['title']}",
+                    label_visibility="collapsed"
+                )
+            
+            # basic dialect translation logic (simple string replacements)
+            sql = recipe["sql_template"].strip()
+            
+            if dialect == "T-SQL":
+                # ensures TOP is present if SELECT is there
+                if "SELECT TOP" not in sql and "SELECT" in sql:
+                    sql = sql.replace("SELECT", "SELECT TOP 100")
+            elif dialect in ["Snowflake", "PostgreSQL"]:
+                # removes TOP if present
+                sql = sql.replace("SELECT TOP 100", "SELECT")
+                # adds LIMIT if not present
+                if "LIMIT" not in sql:
+                    sql += "\nLIMIT 100"
+                # swaps quotes for identifiers (basic heuristic)
+                # note: real dialect conversion is hard; this is a helper
+                if dialect == "PostgreSQL":
+                    sql = sql.replace("GETDATE()", "NOW()").replace("DATEADD", "AGE") # basic syntax swaps
+            
+            with st.expander("👨‍🍳 View SQL Recipe", expanded=False):
+                st.code(sql, language="sql")
+                st.download_button(
+                    label="📥 Download SQL",
+                    data=sql,
+                    file_name=f"recipe_{recipe['title'].lower().replace(' ', '_')}.sql",
+                    mime="application/sql"
+                )
+            
+            st.divider()
 # =============================================================================
 # 10. main orchestrator
 # =============================================================================
