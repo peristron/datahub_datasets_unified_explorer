@@ -2255,6 +2255,8 @@ def main():
         render_relationship_map(df, selected_datasets)
     elif view == "📋 Schema Browser":
         render_schema_browser(df)
+    elif view == "📚 KPI Recipes": # added
+        render_kpi_recipes(df)
     elif view == "⚡ SQL Builder":
         render_sql_builder(df, selected_datasets)
     elif view == "🤖 AI Assistant":
