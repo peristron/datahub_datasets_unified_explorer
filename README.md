@@ -1,101 +1,100 @@
-🔗 Unified Brightspace Dataset Explorer
+# 🔗 Brightspace Dataset Explorer
 
-The ultimate "GPS" and Workbench for D2L Brightspace Data Hub.
+**A Unified Schema Intelligence Engine for D2L/Brightspace Data Hub.**
 
-The Brightspace Dataset Explorer is a professional-grade Streamlit application designed to help Data Engineers, Analysts, and EdTech admins master the 140+ datasets in the D2L Data Hub. It goes beyond simple documentation by providing interactive visualization, semantic translation, and automated code generation.
-✨ Key Features
-1. 🗺️ Interactive Relationship Map
+> **Deployed:** [Streamlit Cloud Link]  
+> **Status:** Production Ready (v2.0)
 
-    Visualize the Network: See how tables connect via Primary and Foreign Keys.
-    Bridge Finder: Selected two unrelated tables? The app automatically finds the "missing link" (intermediate table) needed to join them.
-    Templates: One-click starter packs for common domains (Grades, Engagement, Quizzes).
+This application is a "Rosetta Stone" for Data Engineers, Analysts, and Architects working with Brightspace Data Sets (BDS). It bridges the gap between the raw Knowledge Base documentation and actionable SQL/Python code, providing a visual and interactive way to explore the complex Entity-Relationship model of the LMS.
 
-2. ⚡ SQL Builder & Dialect Switching
+---
 
-    Auto-Joins: Select any combination of datasets; the app calculates the shortest path and writes the SQL.
-    Multi-Dialect: Generates syntax for T-SQL (SQL Server), Snowflake, or PostgreSQL.
-    Download: Export .sql files directly to your machine.
+## 🚀 Key Features
 
-3. 📚 KPI Recipes (Cookbook)
+### 1. 🗺️ Interactive Relationship Map
+*   **Visualize the invisible:** See how tables connect via Primary and Foreign Keys (PK/FK).
+*   **Modes:**
+    *   **Network Graph:** Force-directed graph showing direct connections.
+    *   **Solar System:** "Category" suns with dataset planets (good for discovery).
+    *   **Heatmap:** Density matrix of connections.
+*   **Export:** Download high-res PNGs or GraphViz (DOT) files for documentation tools (Visio/LucidChart).
 
-    Business Logic: Don't just join tables—solve problems. Includes pre-written queries for:
-        Learner Engagement (Last access, course activity)
-        Assessments (Quiz item analysis, grade distribution)
-    Data Cleaning: Special recipes for handling D2L's Row Versioning (deduplication).
+### 2. ⚡ Query Builder (SQL & Python)
+*   **Automated Joins:** Select 2+ datasets, and the engine calculates the shortest join path using NetworkX.
+*   **Polyglot Output:**
+    *   **SQL:** Generates `JOIN` syntax for T-SQL, Snowflake, or PostgreSQL.
+    *   **Python:** Generates `pandas.merge()` code for data scientists working with CSV exports.
 
-4. 🕵️ Semantic "Decoder Ring"
+### 3. 🔧 UDF Flattener
+*   **The Problem:** D2L stores custom user data (Pronouns, Dept ID) in difficult-to-query EAV (Entity-Attribute-Value) tables.
+*   **The Solution:** A dedicated tool that generates the complex `MAX(CASE WHEN...)` SQL required to pivot these rows into clean columns.
 
-    No More Magic Numbers: Automatically detects Enum columns (like GradeObjectTypeId or SessionType) and displays a cheat sheet of their values (e.g., 1 = Numeric, 2 = Pass/Fail).
+### 4. 🤖 AI Data Architect
+*   **Context-Aware:** The AI knows the specific schema and relationships of the datasets you are looking at.
+*   **Secure:** Only *metadata* (column names) is sent to the LLM. No actual row data ever leaves your browser or the app memory.
 
-5. ✨ Schema Version Diff
+### 5. 📚 KPI Recipes
+*   A "Cookbook" of pre-written, verified SQL queries for common questions (e.g., "Learner Engagement," "Quiz Item Analysis").
 
-    Track Changes: Download a baseline of the metadata today. Upload it next month to see exactly which datasets or columns D2L added or removed.
-    Safe Upgrades: Prevents your pipelines from breaking silently.
+---
 
-6. 🤖 AI Data Architect
+## 🛠️ Setup & Installation
 
-    Context-Aware AI: A secure chat interface (OpenAI/xAI) that "knows" the specific schema relationships you are currently viewing.
+**Prerequisites:** Python 3.9+
 
-🛠️ Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-repo/brightspace-explorer.git
+    cd brightspace-explorer
+    ```
 
-    Clone the repository:
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-Bash
+3.  **Configure Secrets:**
+    Create a file at `.streamlit/secrets.toml`:
+    ```toml
+    # Password to unlock AI features
+    app_password = "your_secure_password"
+    
+    # API Keys (Optional - user can enter in UI if not set here)
+    openai_api_key = "sk-..."
+    xai_api_key = "..."
+    ```
 
-git clone https://github.com/your-repo/brightspace-explorer.git
-cd brightspace-explorer
-
-Install dependencies:
-
-Bash
-
-pip install -r requirements.txt
-
-(Requires: streamlit, pandas, networkx, plotly, beautifulsoup4, requests, openai)
-
-Run the application:
-
-Bash
-
+4.  **Run the App:**
+    ```bash
     streamlit run unified_dataset_explorer.py
+    ```
 
-⚙️ Configuration
+---
 
-To enable the AI Assistant, configure your API keys in .streamlit/secrets.toml:
+## 📂 File Structure
 
-toml
+*   `unified_dataset_explorer.py` - The main application monolith (streamlined for Streamlit Cloud).
+*   `dataset_metadata.csv` - The cached schema definitions (generated by the internal scraper).
+*   `requirements.txt` - Python package dependencies.
 
-# Admin Password for the AI Tab
-app_password = "your_secure_password"
+---
 
-# API Keys (Only one required)
-openai_api_key = "sk-..."
-xai_api_key = "..."
+## 🔗 The Ecosystem
 
-📖 Recommended Workflow
-For New Explorers:
+This tool is part of a larger Data Intelligence suite:
 
-    Go to Data Management in the sidebar and click "🔄 Scrape All URLs" to initialize the database.
-    Switch to "🔷 Power User" mode.
-    Navigate to "🗺️ Relationship Map".
-    Select a Template (e.g., "Grades & Feedback").
-    Visualise connections and click "⚡ Get SQL for this View" to generate the query.
+*   **Brightspace Explorer:** (This Tool) For Schema Mapping, SQL Gen, and Architecture.
+*   **[Signal Foundry](https://signalfoundry.streamlit.app/):** For Unstructured Text Analysis (Discussion posts, Survey comments).
+*   **CSV SQL Tool:** For rapid ad-hoc querying of flat files.
 
-For Maintenance (Monthly Updates):
+---
 
-    Go to "✨ Schema Diff".
-    Upload your brightspace_metadata_backup.csv from the previous month.
-    Review the "New Columns" and "New Datasets" report.
+## ⚠️ Limitations & Caveats
 
-🧠 Technical Architecture
+1.  **Metadata Only:** This tool operates on the *documentation* of the datasets, not your live database. It cannot preview rows of data.
+2.  **Standard Schema:** Custom columns created by your SIS integration (e.g., `Oracle_ID_Custom`) will not appear here, as they are not in the public D2L Knowledge Base.
+3.  **Manual Field IDs:** For the **UDF Flattener**, you must manually input your specific Field IDs (e.g., `4`, `9`) because the scraper cannot see your private configuration values.
 
-    Scraper: Threaded BeautifulSoup scraper that parses D2L Knowledge Base HTML tables.
-    Graph Engine: NetworkX handles pathfinding (shortest path algorithms) and centrality metrics.
-    Visualization: Plotly Spring Layouts for dynamic, physics-based network rendering.
-    Security: Implements "Decoy Input" strategies to prevent browser password managers from interfering with UI dropdowns.
+---
 
-📄 License
-
-MIT License
-
-Disclaimer: This tool is an unofficial utility and is not affiliated with or endorsed by D2L Corporation.
+*Open Source software licensed under the MIT License.*
