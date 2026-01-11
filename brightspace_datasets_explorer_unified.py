@@ -2031,11 +2031,11 @@ def render_schema_browser(df: pd.DataFrame):
 
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
-    """renders the sql builder interface."""
-    st.header("⚡ SQL Builder")
+    """renders the sql builder interface with python/pandas support."""
+    st.header("⚡ Query Builder")
     
     if not selected_datasets:
-        st.info("👈 Select 2 or more datasets from the sidebar to generate SQL joins.")
+        st.info("👈 Select 2 or more datasets from the sidebar to generate code.")
         
         # quick select interface
         st.subheader("Quick Select")
@@ -2047,41 +2047,63 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
     
     if selected_datasets:
         if len(selected_datasets) < 2:
-            st.warning("Select at least 2 datasets to generate a JOIN query.")
+            st.warning("Select at least 2 datasets to generate a JOIN.")
         else:
             # show selected datasets
             st.markdown(f"**Selected:** {', '.join(selected_datasets)}")
             
-            # --- NEW: Dialect Selection ---
-            col_opts, _ = st.columns([1, 3])
-            with col_opts:
-                dialect = st.selectbox(
-                    "Target Database Dialect", 
-                    ["T-SQL", "Snowflake", "PostgreSQL"],
-                    help="Adjusts syntax for quotes ([], \"\") and limits (TOP vs LIMIT)."
+            # --- output config ---
+            col_lang, col_opts, _ = st.columns([1, 1, 2])
+            
+            with col_lang:
+                output_format = st.radio(
+                    "Output Format", 
+                    ["SQL", "Python (Pandas)"],
+                    horizontal=True,
+                    help="Choose between generating a SQL query or Python code for CSV analysis."
                 )
-            # ------------------------------
-            
-            # generate sql with dialect
-            sql_code = generate_sql(selected_datasets, df, dialect)
-            
-            col_sql, col_schema = st.columns([2, 1])
-            
-            with col_sql:
-                st.markdown("#### Generated SQL")
-                st.code(sql_code, language="sql")
+
+            # conditional logic based on selection
+            if output_format == "SQL":
+                with col_opts:
+                    dialect = st.selectbox(
+                        "Target Database Dialect", 
+                        ["T-SQL", "Snowflake", "PostgreSQL"],
+                        help="Adjusts syntax for quotes ([], \"\") and limits (TOP vs LIMIT)."
+                    )
+                # Generate SQL
+                generated_code = generate_sql(selected_datasets, df, dialect)
+                lang_label = "sql"
+                file_ext = "sql"
+                mime_type = "application/sql"
+                download_label = f"Download {dialect} Query"
+            else:
+                with col_opts:
+                    st.caption("Generates `pd.read_csv` and `pd.merge` code for local analysis.")
                 
-                # adding download button with dynamic filename
+                # generates the python
+                generated_code = generate_pandas(selected_datasets, df)
+                lang_label = "python"
+                file_ext = "py"
+                mime_type = "text/x-python"
+                download_label = "Download Python Script"
+
+            # --- displays code ---
+            col_code, col_schema = st.columns([2, 1])
+            
+            with col_code:
+                st.markdown(f"#### Generated {output_format}")
+                st.code(generated_code, language=lang_label)
+                
                 st.download_button(
-                    label=f"📥 Download {dialect} Query",
-                    data=sql_code,
-                    file_name=f"brightspace_query_{dialect.lower()}.sql",
-                    mime="application/sql"
+                    label=f"📥 {download_label}",
+                    data=generated_code,
+                    file_name=f"brightspace_extract.{file_ext}",
+                    mime=mime_type
                 )
             
             with col_schema:
                 st.markdown("#### Field Reference")
-                
                 for ds in selected_datasets:
                     with st.expander(f"📦 {ds}", expanded=False):
                         subset = df[df['dataset_name'] == ds]
@@ -2089,7 +2111,7 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                         available_cols = [c for c in display_cols if c in subset.columns]
                         st.dataframe(subset[available_cols], hide_index=True, use_container_width=True, height=200)
             
-            # show join visualization
+            # show join visualization (relevant for both SQL and Pandas)
             with st.expander("🗺️ Join Visualization"):
                 fig = create_spring_graph(df, selected_datasets, 'focused', 12, 1.0, 400, True)
                 st.plotly_chart(fig, use_container_width=True)
