@@ -1273,7 +1273,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             ["simple", "advanced"],
             format_func=lambda x: "🟢 Quick Explorer" if x == "simple" else "🔷 Power User",
             horizontal=True,
-            help="Quick Explorer: Streamlined interface. Power User: All features and controls; best combo is probably Power User>Relationship Map>Dataset Selection>List All>then select your datasets."
+            help="Quick Explorer: Streamlined interface. Power User: All features and controls."
         )
         
         is_advanced = st.session_state['experience_mode'] == 'advanced'
@@ -1282,10 +1282,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # navigation based on mode
         if is_advanced:
-            # adding "📚 KPI Recipes" to the list
             view = st.radio(
                 "Navigation", 
-                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "🤖 AI Assistant"],
+                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "✨ Schema Diff", "🤖 AI Assistant"],
                 label_visibility="collapsed"
             )
         else:
@@ -1303,19 +1302,37 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         else:
             st.error("❌ No data loaded")
         
+        # --data mgmt, Backup Button--
         with st.expander("⚙️ Data Management", expanded=df.empty):
             pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
-            if st.button("🔄 Scrape All URLs", type="primary"):
-                urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
-                if urls:
-                    with st.spinner(f"Scraping {len(urls)} pages..."):
-                        new_df = scrape_and_save(urls)
-                        if not new_df.empty:
-                            st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
-                            load_data.clear()
-                            st.rerun()
-                else:
-                    st.error("No valid URLs found")
+            
+            c_scrape, c_download = st.columns(2)
+            
+            with c_scrape:
+                if st.button("🔄 Scrape All URLs", type="primary"):
+                    urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
+                    if urls:
+                        with st.spinner(f"Scraping {len(urls)} pages..."):
+                            new_df = scrape_and_save(urls)
+                            if not new_df.empty:
+                                st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
+                                load_data.clear()
+                                st.rerun()
+                    else:
+                        st.error("No valid URLs found")
+            
+            with c_download:
+                if not df.empty:
+                    # converts dataframe to CSV for download
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="💾 Save Backup CSV",
+                        data=csv,
+                        file_name="brightspace_metadata_backup.csv",
+                        mime="text/csv",
+                        help="Save this file. Upload it in the 'Schema Diff' tab later to see what changed."
+                    )
+        # ----------------------------------------------------
         
         # dataset selection (when applicable)
         selected_datasets = []
@@ -1326,9 +1343,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             if is_advanced:
                 select_mode = st.radio("Method:", ["Templates", "By Category", "List All"], horizontal=True, label_visibility="collapsed")
             else:
-                select_mode = "Templates" # Default to easy mode for Quick Explorer
+                select_mode = "Templates" # default to easy mode for Quick Explorer
             
-            # -new template logic
             if select_mode == "Templates":
                 templates = {
                     "User Progress": ["Users", "User Enrollments", "Content User Progress", "Course Access"],
@@ -1341,17 +1357,14 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 chosen_template = st.selectbox("Select a Scenario:", ["Custom Selection..."] + list(templates.keys()))
                 
                 if chosen_template != "Custom Selection...":
-                    # updating the selection state automatically
                     st.session_state['selected_datasets'] = templates[chosen_template]
                     selected_datasets = st.session_state['selected_datasets']
                     st.success(f"Loaded {len(selected_datasets)} datasets for {chosen_template}")
                 else:
-                    # for manual addition on top of template
                     all_ds = sorted(df['dataset_name'].unique())
                     selected_datasets = st.multiselect("Select Datasets:", all_ds, default=st.session_state.get('selected_datasets', []))
 
             elif select_mode == "By Category":
-                # keeping existing By Category logic.
                 all_cats = sorted(df['category'].unique())
                 selected_cats = st.multiselect("Filter Categories:", all_cats, default=[])
                 if selected_cats:
@@ -1369,10 +1382,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         # authentication
         st.divider()
 
-        # -now: a DECOYINPUT TO TRAP PASSWORD MANAGER ---
-        # injects an invisible text field. Browsers will think THIS 
-        # is the username field for the password below, leaving the 
-        # Dataset Selector alone
+        # decoy input for password manager protection
         st.markdown(
             """
             <div style="height:0px; overflow:hidden; opacity:0; position:absolute; z-index:-1;">
@@ -1381,7 +1391,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             """, 
             unsafe_allow_html=True
         )
-        # ------------------------------------------------
 
         if st.session_state['authenticated']:
             st.success("🔓 AI Unlocked")
