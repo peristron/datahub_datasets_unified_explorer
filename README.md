@@ -6,42 +6,37 @@ A Unified Schema Intelligence Engine for D2L/Brightspace Data Hub.
     Status: Production Ready (v2.1)
 
 This application is a "Rosetta Stone" for Data Engineers, Analysts, and Architects working with Brightspace Data Sets (BDS). It bridges the gap between the raw Knowledge Base documentation and actionable SQL/Python code, providing a visual and interactive way to explore the complex Entity-Relationship model of the LMS.
-🚀 Key Features
-1. 🎛️ Experience Modes
+## 🚀 Key Features
 
-    🟢 Quick Explorer: A streamlined interface for general users. Focuses on the Dashboard, Visual Map, and AI Assistant.
-    🔷 Power User: Unlocks the full engineering toolkit, including the SQL Builder, Schema Browser, KPI Recipes, and UDF Flattener.
+### 1. 🎛️ Experience Modes
+*   **🟢 Quick Explorer:** A streamlined interface for general users. Focuses on the Dashboard, Visual Map, and AI Assistant.
+*   **🔷 Power User:** Unlocks the full engineering toolkit, including the SQL Builder, Schema Browser, KPI Recipes, and UDF Flattener.
 
-2. 🗺️ Interactive Relationship Map
+### 2. 📋 Schema Browser & Comparison
+*   **Dictionary:** Browse column definitions, data types, and descriptions for any dataset.
+*   **Side-by-Side View:** Select multiple datasets simultaneously to compare schemas vertically (e.g., to verify if `UserId` is consistent across tables).
+*   **Decoder Ring:** Automatically detects and decodes integer Enums (e.g., `GradeObjectType: 1 = Numeric`) using built-in mappings.
 
-    Visualize the invisible: See how tables connect via Primary and Foreign Keys (PK/FK).
-    Modes:
-        Network Graph: Force-directed graph showing direct connections.
-        Solar System: "Category" suns with dataset planets (good for discovery).
-        Heatmap: Density matrix of connections.
-    Export: Download high-res PNGs or GraphViz (DOT) files for external diagramming tools.
+### 3. 🗺️ Interactive Relationship Map
+*   **Visualize the invisible:** See how tables connect via Primary and Foreign Keys (PK/FK).
+*   **Modes:** Network Graph (Force-directed), Solar System (Categorical), and Heatmap.
+*   **Export:** Download high-res PNGs or GraphViz (DOT) files.
 
-3. ⚡ Query Builder (SQL & Python)
+### 4. ⚡ Query Builder (SQL & Python)
+*   **Automated Joins:** Select 2+ datasets, and the engine calculates the shortest join path using NetworkX.
+*   **Polyglot Output:** Generates T-SQL, Snowflake, PostgreSQL, or Python `pandas.merge()` code.
 
-    Automated Joins: Select 2+ datasets, and the engine calculates the shortest join path using NetworkX.
-    Polyglot Output:
-        SQL: Generates JOIN syntax for T-SQL, Snowflake, or PostgreSQL.
-        Python: Generates pandas.merge() code for data scientists working with CSV exports.
+### 5. ⚙️ Smart Data Management
+*   **Integrated Scraper:** Fetches the latest schema definitions directly from the D2L Community Knowledge Base.
+*   **Backup & Restore:** Download a snapshot of the current metadata schema as a CSV for offline analysis or version comparison.
 
-4. ⚙️ Smart Data Management
+### 6. 🔧 UDF Flattener
+*   **The Issue:** D2L stores custom user data (e.g., Pronouns, Dept ID) in EAV (Entity-Attribute-Value) tables.
+*   **The Solution:** Generates the complex `MAX(CASE WHEN...)` SQL required to pivot these rows into clean columns.
 
-    Integrated Scraper: Fetches the latest schema definitions directly from the D2L Community Knowledge Base.
-    Backup & Restore: Download a snapshot of the current metadata schema as a CSV for offline analysis or version comparison.
-
-5. 🔧 UDF Flattener
-
-    The Problem: D2L stores custom user data (e.g., Pronouns, Dept ID) in EAV (Entity-Attribute-Value) tables.
-    The Solution: Generates the complex MAX(CASE WHEN...) SQL required to pivot these rows into clean columns.
-
-6. 🤖 AI Data Architect
-
-    Context-Aware: The AI uses the current schema metadata to answer questions about the data model.
-    Secure: Only metadata (column names/types) is sent to the LLM. No actual row data ever leaves your browser.
+### 7. 🤖 AI Data Architect
+*   **Context-Aware:** The AI uses the current schema metadata to answer questions about the data model.
+*   **Secure:** Only *metadata* (column names/types) is sent to the LLM. No actual row data ever leaves your browser.
 
 🛠️ Setup & Installation
 
@@ -68,7 +63,7 @@ toml
 # Password to unlock AI features
 app_password = "your_secure_password"
 
-# API Keys (Optional - user can enter in UI if not set here)
+# API Keys (Optional - user can enter in UI if not set here, which they won't~)
 openai_api_key = "sk-..."
 xai_api_key = "..."
 
