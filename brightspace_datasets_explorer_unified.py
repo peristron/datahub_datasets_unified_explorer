@@ -353,9 +353,30 @@ def clear_all_selections():
 # 5. data layer (scraper & storage)
 # =============================================================================
 
+def clean_description(text: str) -> str:
+    """
+    Logic to convert raw documentation text into a concise summary.
+    Removes boilerplate like 'The User data set describes...'
+    """
+    if not text:
+        return ""
+    
+    # 1. Remove common D2L boilerplate
+    text = re.sub(r'^The .*? data set (describes|contains|provides) ', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^This (data set|table) (describes|contains|provides) ', '', text, flags=re.IGNORECASE)
+    
+    # 2. Capitalize first letter if needed
+    text = text[0].upper() + text[1:] if text else text
+    
+    # 3. Limit to the first 2 sentences for brevity
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    summary = ' '.join(sentences[:2])
+    
+    return summary
+
 def scrape_table(url: str, category_name: str) -> List[Dict]:
     """
-    parses a d2l knowledge base page to extract dataset definitions.
+    parses a d2l knowledge base page to extract dataset definitions AND context descriptions.
     returns a list of dictionaries representing columns.
     """
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
@@ -368,6 +389,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
         soup = BeautifulSoup(response.content, 'html.parser')
         data = []
         current_dataset = category_name
+        current_desc = "" # New: Store the description
         
         # logic: headers (h2/h3) denote the dataset name, following table is schema
         elements = soup.find_all(['h2', 'h3', 'table'])
@@ -376,6 +398,14 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 text = element.text.strip()
                 if len(text) > 3: 
                     current_dataset = text.lower()
+                    
+                    # --- Look ahead for description ---
+                    next_sibling = element.find_next_sibling()
+                    if next_sibling and next_sibling.name == 'p':
+                        raw_text = next_sibling.text.strip()
+                        current_desc = clean_description(raw_text)
+                    else:
+                        current_desc = "" 
                     
             elif element.name == 'table':
                 # normalize headers
@@ -404,6 +434,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         clean_entry['dataset_name'] = current_dataset
                         clean_entry['category'] = category_name
                         clean_entry['url'] = url
+                        clean_entry['dataset_description'] = current_desc
                         data.append(clean_entry)
                         
         return data
@@ -454,7 +485,7 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     df['category'] = df['category'].astype(str).str.title()
     
     # ensure expected columns exist
-    expected_cols = ['category', 'dataset_name', 'column_name', 'data_type', 'description', 'key', 'url']
+    expected_cols = ['category', 'dataset_name', 'dataset_description', 'column_name', 'data_type', 'description', 'key', 'url']
     for col in expected_cols:
         if col not in df.columns:
             df[col] = ''
@@ -609,22 +640,30 @@ def get_orphan_datasets(df: pd.DataFrame) -> List[str]:
     return orphans
 
 
-def find_join_path(df: pd.DataFrame, source_dataset: str, target_dataset: str) -> Optional[List[str]]:
-    """finds the shortest path of joins between two datasets."""
+def find_all_paths(df: pd.DataFrame, source_dataset: str, target_dataset: str, cutoff: int = 4) -> List[List[str]]:
+    """
+    Finds ALL simple paths between two datasets up to a specific length (cutoff).
+    Returns a list of paths, sorted by length (shortest first).
+    """
     joins = get_joins(df)
     
     if joins.empty:
-        return None
+        return []
     
     G = nx.Graph()
     for _, r in joins.iterrows():
         G.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
     
     try:
-        path = nx.shortest_path(G, source_dataset, target_dataset)
-        return path
+        # all_simple_paths finds every valid route without cycles
+        raw_paths = list(nx.all_simple_paths(G, source_dataset, target_dataset, cutoff=cutoff))
+        
+        # Sort by length (number of nodes) so the "best" paths appear first
+        raw_paths.sort(key=len)
+        
+        return raw_paths
     except (nx.NetworkXNoPath, nx.NodeNotFound):
-        return None
+        return []
 
 
 def get_path_details(df: pd.DataFrame, path: List[str]) -> List[Dict]:
@@ -783,105 +822,6 @@ def create_spring_graph(
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y, 
         line=dict(width=1.5, color='#666'), 
-        hoverinfo='none', 
-        mode='lines'
-    )
-    
-    # build node traces with category colors
-    categories = df['category'].unique().tolist()
-    cat_colors = get_category_colors(categories)
-    
-    node_x = []
-    node_y = []
-    node_text = []
-    node_color = []
-    node_hover = []
-    node_size = []
-    node_symbol = []
-    node_line_color = []
-    node_line_width = []
-    
-    for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        
-        node_type = G.nodes[node].get('type', 'focus')
-        category = df[df['dataset_name'] == node]['category'].iloc[0] if not df[df['dataset_name'] == node].empty else 'unknown'
-        node_color.append(cat_colors.get(category, '#ccc'))
-        node_hover.append(f"<b>{node}</b><br>Category: {category}<br>Type: {node_type.title()}")
-        
-        if node_type == 'focus':
-            node_size.append(40)
-            node_symbol.append('square')
-            node_text.append(f'<b>{node}</b>')
-            node_line_color.append('white')
-            node_line_width.append(3)
-        else:
-            node_size.append(20)
-            node_symbol.append('circle')
-            node_text.append(node)
-            node_line_color.append('gray')
-            node_line_width.append(1)
-    
-    node_trace = go.Scatter(
-        x=node_x, y=node_y, 
-        mode='markers+text',
-        hoverinfo='text', 
-        hovertext=node_hover,
-        text=node_text, 
-        textposition="top center", 
-        textfont=dict(size=graph_font_size, color='#fff'),
-        marker=dict(
-            showscale=False, 
-            color=node_color, 
-            size=node_size, 
-            symbol=node_symbol,
-            line=dict(color=node_line_color, width=node_line_width)
-        )
-    )
-    
-    fig = go.Figure(
-        data=[edge_trace, node_trace],
-        layout=go.Layout(
-            showlegend=False, 
-            hovermode='closest', 
-            margin=dict(b=20, l=5, r=5, t=40),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            paper_bgcolor='#1e1e1e', 
-            plot_bgcolor='#1e1e1e',
-            annotations=annotations, 
-            height=graph_height
-        )
-    )
-    return fig
-    
-    # calculate positions
-    pos = nx.spring_layout(G, k=node_separation, iterations=50)
-    
-    # build edge traces
-    edge_x = []
-    edge_y = []
-    annotations = []
-    
-    for edge in G.edges(data=True):
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])
-        edge_y.extend([y0, y1, None])
-        if show_edge_labels:
-            annotations.append(dict(
-                x=(x0 + x1) / 2, 
-                y=(y0 + y1) / 2, 
-                text=edge[2].get('label', ''), 
-                showarrow=False, 
-                font=dict(color="cyan", size=max(8, graph_font_size - 4))
-            ))
-    
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y, 
-        line=dict(width=1.5, color='#888'), 
         hoverinfo='none', 
         mode='lines'
     )
@@ -1352,15 +1292,46 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         
         # navigation based on mode
         if is_advanced:
+            # Options for Power User
+            options = [
+                "📊 Dashboard", 
+                "🗺️ Relationship Map", 
+                "📋 Schema Browser", 
+                "📚 KPI Recipes", 
+                "⚡ SQL Builder", 
+                "🔀 SQL Translator", 
+                "🔧 UDF Flattener", 
+                "✨ Schema Diff", 
+                "🤖 AI Assistant"
+            ]
+            # Explanatory captions for Power User
+            captions = [
+                "Overview, Search & Context",
+                "Visualize Connections (PK/FK)",
+                "Compare Tables Side-by-Side",
+                "Pre-packaged SQL Solutions",
+                "Generate JOIN Code",
+                "Convert T-SQL ↔ Postgres", 
+                "Pivot Custom Fields (EAV)",
+                "Compare against backups",
+                "Ask questions about data"
+            ]
+            
             view = st.radio(
                 "Navigation", 
-                ["📊 Dashboard", "🗺️ Relationship Map", "📋 Schema Browser", "📚 KPI Recipes", "⚡ SQL Builder", "🔧 UDF Flattener", "✨ Schema Diff", "🤖 AI Assistant"],
+                options,
+                captions=captions,
                 label_visibility="collapsed"
             )    
         else:
+            # Options for Quick Explorer
+            options = ["📊 Dashboard", "🗺️ Relationship Map", "🤖 AI Assistant"]
+            captions = ["Overview & Search", "Visualize Connections", "Ask questions"]
+            
             view = st.radio(
                 "Navigation", 
-                ["📊 Dashboard", "🗺️ Relationship Map", "🤖 AI Assistant"],
+                options,
+                captions=captions,
                 label_visibility="collapsed"
             )
         
@@ -1386,7 +1357,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         with st.expander("⚙️ Data Management", expanded=df.empty):
             pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
             
-            # button 1 scrape and update (stacked, full width)
+            # Button 1: Scrape & Update (Stacked, Full Width)
             if st.button("🔄 Scrape & Update All URLs", type="primary", use_container_width=True, help="Scrape the URLs listed above, add any new datasets found, and refresh the schema."):
                 urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
                 if urls:
@@ -1399,7 +1370,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 else:
                     st.error("No valid URLs found")
             
-            # button 2, download backup (stacked, full width format)
+            # Button 2: Download Backup (Stacked, Full Width)
             if not df.empty:
                 # generates timestamp for filename
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
@@ -1418,6 +1389,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     help="Save a backup of the current schema state. Useful for comparisons or offline analysis.",
                     use_container_width=True
                 )
+
+        
+        # ----------------------------------------------------
         
         # dataset selection (when applicable)
         selected_datasets = []
@@ -1522,20 +1496,20 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
     return view, selected_datasets
 
 
-
 def render_dashboard(df: pd.DataFrame):
     """renders the main dashboard with overview statistics and intelligent search."""
     st.header("📊 Datahub Datasets Overview")
     
-    # --how to use section -
+    # --- NEW: How to use section (Updated Text) ---
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
-        **Welcome to the Brightspace Dataset Explorer, a tool to help you navigate schemas and build queries across a large and growing number of datahub datasets** .
+        **Welcome to the Brightspace Dataset Explorer!** This tool acts as a Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries.
         
-        1.  **🔍 Search:** Use **Intelligent Search** (below) to find which dataset a specific column (e.g., `OrgUnitId`) belongs to.
-        2.  **🗺️ Map:** Switch to the **Relationship Map** tab to visualize how tables connect via Primary/Foreign keys.
-        3.  **⚡ SQL:** Use the **SQL Builder** to select multiple datasets and automatically generate the correct `LEFT JOIN` syntax.
-        4.  **🤖 AI:** Unlock the **AI Assistant** to ask plain-language questions about the data model.
+        1.  **🔍 Search & Context:** Find where columns (e.g., `OrgUnitId`) live and read **summaries** of what each dataset actually does.
+        2.  **📋 Compare Schemas:** Use the **Schema Browser** to select multiple datasets and inspect their structures side-by-side.
+        3.  **🗺️ Map Dependencies:** Visualize how "Fact" tables (Logs) connect to "Dimension" tables (Users, OrgUnits).
+        4.  **⚡ Build Queries:** Select datasets in the **SQL Builder** to auto-generate the correct `LEFT JOIN` syntax.
+        5.  **🤖 Ask AI:** Unlock the **AI Assistant** to ask plain-language questions about the data model.
         
         **💡 Pro Tip:** Toggle **"Power User"** mode in the sidebar to reveal advanced tools like the *UDF Flattener* and *KPI Recipes*.
         """)
@@ -1738,7 +1712,7 @@ def render_dashboard(df: pd.DataFrame):
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
-        st.caption("Find the shortest join path between two datasets")
+        st.caption("Find all valid join paths (up to 4 hops) between two datasets.")
         
         col_from, col_to, col_find = st.columns([2, 2, 1])
         
@@ -1751,26 +1725,41 @@ def render_dashboard(df: pd.DataFrame):
         with col_find:
             st.write("")
             st.write("")
-            find_path = st.button("Find Path", type="primary")
+            find_path = st.button("Find Paths", type="primary")
         
-        if find_path and source_ds and target_ds and source_ds != target_ds:
-            path = find_join_path(df, source_ds, target_ds)
-            if path:
-                st.success(f"Found path with {len(path) - 1} join(s)")
-                
-                path_details = get_path_details(df, path)
-                
-                path_text = []
-                for i, step in enumerate(path_details):
-                    path_text.append(f"**{step['from']}** → `{step['column']}` → **{step['to']}**")
-                
-                st.markdown(" → ".join([f"**{p}**" for p in path]))
-                
-                with st.expander("View Join Details"):
-                    for step in path_details:
-                        st.markdown(f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`")
+        if find_path and source_ds and target_ds:
+            if source_ds == target_ds:
+                st.warning("Please select two different datasets.")
             else:
-                st.error("No path found between these datasets. They may not be connected.")
+                with st.spinner("Calculating network paths..."):
+                    # Use the new function to get multiple paths
+                    paths = find_all_paths(df, source_ds, target_ds, cutoff=4)
+                
+                if paths:
+                    count = len(paths)
+                    st.success(f"Found {count} valid path(s) (max 4 hops). Showing top {min(count, 5)}.")
+                    
+                    # Limit to top 5 to avoid UI clutter
+                    for i, path in enumerate(paths[:5]):
+                        
+                        # Calculate hops (nodes - 1)
+                        hops = len(path) - 1
+                        
+                        # Visual distinction for the "Best" path
+                        label = f"Option {i+1}: {hops} Join(s)"
+                        if i == 0: label += " (Shortest)"
+                        
+                        with st.expander(label, expanded=(i==0)):
+                            # Breadcrumb visual
+                            st.markdown(" → ".join([f"**{p}**" for p in path]))
+                            
+                            # Detailed breakdown
+                            path_details = get_path_details(df, path)
+                            st.markdown("---")
+                            for step in path_details:
+                                st.markdown(f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`")
+                else:
+                    st.error("No path found within 4 hops. These datasets may be unrelated.")
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
@@ -2078,6 +2067,17 @@ def render_schema_browser(df: pd.DataFrame):
                 
                 subset = df[df['dataset_name'] == selected_ds]
                 
+                # --- NEW: Contextual Description Block ---
+                # Check if we have a description for this dataset
+                if 'dataset_description' in subset.columns:
+                    # Get the first non-empty description
+                    desc_text = subset['dataset_description'].iloc[0]
+                    if desc_text:
+                        st.info(f"**Context:** {desc_text}", icon="💡")
+                    else:
+                        st.caption("No context description available.")
+                # -----------------------------------------
+
                 # dataset info
                 col_info, col_stats = st.columns([2, 1])
                 
@@ -2228,6 +2228,69 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                 fig = create_spring_graph(df, selected_datasets, 'focused', 12, 1.0, 400, True)
                 st.plotly_chart(fig, use_container_width=True)
 
+def render_sql_translator():
+    """renders the sql dialect translation tool."""
+    st.header("🔀 SQL Dialect Translator")
+    st.markdown("Convert queries between dialects (e.g., T-SQL to PostgreSQL) or to Python/Pandas.")
+
+    if not st.session_state['authenticated']:
+        st.warning("🔒 Login required. This feature uses the AI engine to ensure accurate syntax translation.")
+        return
+
+    # Configuration
+    c1, c2 = st.columns(2)
+    with c1:
+        source_lang = st.selectbox("Source Dialect", ["Auto-Detect", "T-SQL (SQL Server)", "MySQL", "Oracle", "PostgreSQL", "Snowflake"])
+    with c2:
+        target_lang = st.selectbox("Target Dialect", ["PostgreSQL", "Snowflake", "T-SQL (SQL Server)", "MySQL", "Python (Pandas)"])
+
+    input_query = st.text_area("Paste Source Query", height=200, placeholder="SELECT TOP 10 * FROM Users WHERE CAST(Created AS DATE) = GETDATE()...")
+
+    if st.button("✨ Translate Code", type="primary"):
+        if not input_query:
+            st.error("Please enter a query to translate.")
+            return
+
+        # Prepare prompt
+        system_msg = f"""You are an expert SQL Code Translator.
+        Task: Convert the following {source_lang} query into optimized {target_lang}.
+        
+        Rules:
+        1. Preserve the original logic exactly.
+        2. Convert specific functions (e.g., GETDATE() -> NOW(), TOP -> LIMIT).
+        3. If converting to Python/Pandas, assume 'df' is the dataframe.
+        4. Output ONLY the code block. No conversational filler.
+        5. Add short comments explaining complex changes if necessary.
+        """
+
+        # Get API Key
+        model = "gpt-4o-mini" # Low cost, high speed is fine for translation
+        provider = "OpenAI"   # Defaulting to OpenAI for this utility, or lookup from registry
+        
+        # Check which key is loaded
+        secret_key = get_secret("openai_api_key") or get_secret("xai_api_key")
+        if not secret_key:
+             st.error("No API Key found. Please login.")
+             return
+
+        try:
+            with st.spinner(f"Translating to {target_lang}..."):
+                client = openai.OpenAI(api_key=secret_key, base_url="https://api.x.ai/v1" if "xai" in str(secret_key) else None)
+                
+                response = client.chat.completions.create(
+                    model=model if "xai" not in str(secret_key) else "grok-3-mini", # Fallback logic
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": input_query}
+                    ]
+                )
+                
+                translated_code = response.choices[0].message.content
+                
+                st.subheader(f"Output ({target_lang})")
+                st.code(translated_code, language="sql" if "Python" not in target_lang else "python")
+        except Exception as e:
+            st.error(f"Translation failed: {str(e)}")
 
 def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the ai chat interface."""
@@ -2621,8 +2684,16 @@ def main():
         render_kpi_recipes(df)
     elif view == "⚡ SQL Builder":
         render_sql_builder(df, selected_datasets)
+    elif view == "🔀 SQL Translator":
+        render_sql_translator()
     elif view == "🔧 UDF Flattener":
         render_udf_flattener(df)
+    elif view == "✨ Schema Diff": # Placeholder for future implementation referenced in sidebar
+         st.header("✨ Schema Diff")
+         st.info("Upload a backup CSV to compare against the current schema.")
+         uploaded_file = st.file_uploader("Upload Backup CSV", type="csv")
+         if uploaded_file:
+             st.caption("Diff logic not yet implemented in this version.")
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)    
 
