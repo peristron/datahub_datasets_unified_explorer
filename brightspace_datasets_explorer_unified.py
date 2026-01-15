@@ -640,28 +640,40 @@ def get_orphan_datasets(df: pd.DataFrame) -> List[str]:
     return orphans
 
 
-def find_all_paths(df: pd.DataFrame, source_dataset: str, target_dataset: str, cutoff: int = 4) -> List[List[str]]:
+def find_all_paths(df: pd.DataFrame, source_dataset: str, target_dataset: str, cutoff: int = 4, limit: int = 5) -> List[List[str]]:
     """
-    Finds ALL simple paths between two datasets up to a specific length (cutoff).
-    Returns a list of paths, sorted by length (shortest first).
+    Finds paths using Shortest Path First strategy. 
+    Stops execution once 'limit' is reached or paths exceed 'cutoff', 
+    preventing exponential hang on high hop counts.
     """
     joins = get_joins(df)
     
     if joins.empty:
         return []
     
+    # to cache the graph creation if possible, but for now we build it here
     G = nx.Graph()
     for _, r in joins.iterrows():
         G.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
     
     try:
-        # all_simple_paths finds every valid route without cycles
-        raw_paths = list(nx.all_simple_paths(G, source_dataset, target_dataset, cutoff=cutoff))
+        # uses shortest_simple_paths (Generator) instead of all_simple_paths
+        # yields the best paths immediately without calculating the long, irrelevant ones
+        path_generator = nx.shortest_simple_paths(G, source_dataset, target_dataset)
         
-        # Sort by length (number of nodes) so the "best" paths appear first
-        raw_paths.sort(key=len)
-        
-        return raw_paths
+        valid_paths = []
+        for path in path_generator:
+            # checks length constraint (nodes = hops + 1)
+            if len(path) - 1 > cutoff:
+                break
+            
+            valid_paths.append(path)
+            
+            # checks quantity constraint (Stop calculating once we have enough)
+            if len(valid_paths) >= limit:
+                break
+                
+        return valid_paths
     except (nx.NetworkXNoPath, nx.NodeNotFound):
         return []
 
