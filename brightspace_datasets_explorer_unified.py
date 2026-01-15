@@ -1751,29 +1751,30 @@ def render_dashboard(df: pd.DataFrame):
             if source_ds == target_ds:
                 st.warning("Please select two different datasets.")
             else:
-                with st.spinner(f"Calculating network paths (Max {max_hops} hops)..."):
-                    # Use variable cutoff based on UI input
-                    paths = find_all_paths(df, source_ds, target_ds, cutoff=max_hops)
+                with st.spinner(f"Calculating network paths..."):
+                    # passing the limit (top_k) to the function so it stops calculating early
+                    paths = find_all_paths(df, source_ds, target_ds, cutoff=max_hops, limit=top_k)
                 
                 if paths:
                     count = len(paths)
-                    st.success(f"Found {count} valid path(s) (max {max_hops} hops). Showing top {min(count, top_k)}.")
+                    # UI text update: because stopping early, don't know the "Total" count, 
+                    # so: updates the message to reflect that best paths were found
+                    st.success(f"Found top {count} shortest path(s) within {max_hops} hops.")
                     
-                    # Use variable limit based on UI input
-                    for i, path in enumerate(paths[:top_k]):
+                    for i, path in enumerate(paths):
                         
-                        # Calculate hops (nodes - 1)
+                        # calculates hops (nodes - 1)
                         hops = len(path) - 1
                         
-                        # Visual distinction for the "Best" path
+                        # visual distinction for the "Best" path
                         label = f"Option {i+1}: {hops} Join(s)"
                         if i == 0: label += " (Shortest)"
                         
                         with st.expander(label, expanded=(i==0)):
-                            # Breadcrumb visual
+                            # breadcrumb visual
                             st.markdown(" → ".join([f"**{p}**" for p in path]))
                             
-                            # Detailed breakdown
+                            # detailed breakdown
                             path_details = get_path_details(df, path)
                             st.markdown("---")
                             for step in path_details:
