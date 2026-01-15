@@ -1712,35 +1712,43 @@ def render_dashboard(df: pd.DataFrame):
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
-        st.caption("Find all valid join paths (up to 4 hops) between two datasets.")
-        
-        col_from, col_to, col_find = st.columns([2, 2, 1])
+        st.caption("Find all valid join paths between two datasets.")
         
         all_ds = sorted(df['dataset_name'].unique())
         
+        # Row 1: Dataset Selection
+        col_from, col_to = st.columns(2)
         with col_from:
             source_ds = st.selectbox("From Dataset", [""] + all_ds, key="path_source")
         with col_to:
             target_ds = st.selectbox("To Dataset", [""] + all_ds, key="path_target")
+
+        # Row 2: Configuration & Action
+        col_hops, col_limit, col_find = st.columns([1, 1, 2])
+        
+        with col_hops:
+            max_hops = st.number_input("Max Hops", min_value=1, max_value=6, value=4, help="Max number of joins allowed (depth).")
+        with col_limit:
+            top_k = st.number_input("Results to Show", min_value=1, max_value=50, value=5, help="Number of paths to display.")
         with col_find:
-            st.write("")
-            st.write("")
-            find_path = st.button("Find Paths", type="primary")
+            st.write("") # Spacer for alignment
+            st.write("") 
+            find_path = st.button("Find Paths", type="primary", use_container_width=True)
         
         if find_path and source_ds and target_ds:
             if source_ds == target_ds:
                 st.warning("Please select two different datasets.")
             else:
-                with st.spinner("Calculating network paths..."):
-                    # Use the new function to get multiple paths
-                    paths = find_all_paths(df, source_ds, target_ds, cutoff=4)
+                with st.spinner(f"Calculating network paths (Max {max_hops} hops)..."):
+                    # Use variable cutoff based on UI input
+                    paths = find_all_paths(df, source_ds, target_ds, cutoff=max_hops)
                 
                 if paths:
                     count = len(paths)
-                    st.success(f"Found {count} valid path(s) (max 4 hops). Showing top {min(count, 5)}.")
+                    st.success(f"Found {count} valid path(s) (max {max_hops} hops). Showing top {min(count, top_k)}.")
                     
-                    # Limit to top 5 to avoid UI clutter
-                    for i, path in enumerate(paths[:5]):
+                    # Use variable limit based on UI input
+                    for i, path in enumerate(paths[:top_k]):
                         
                         # Calculate hops (nodes - 1)
                         hops = len(path) - 1
@@ -1759,7 +1767,7 @@ def render_dashboard(df: pd.DataFrame):
                             for step in path_details:
                                 st.markdown(f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`")
                 else:
-                    st.error("No path found within 4 hops. These datasets may be unrelated.")
+                    st.error(f"No path found within {max_hops} hops. These datasets may be unrelated or require a deeper search.")
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
