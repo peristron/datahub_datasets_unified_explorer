@@ -382,6 +382,21 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
     returns a list of dictionaries representing columns.
     """
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
+    # NEW: List of headers to IGNORE so we don't lose the actual dataset name
+    IGNORE_HEADERS = [
+        "returned fields", 
+        "available filters", 
+        "required permission", 
+        "required permissions",
+        "about", 
+        "notes", 
+        "filters",
+        "description",
+        "version history",
+        "table of contents"
+    ]
+
     try:
         response = requests.get(url, headers=headers, timeout=15, verify=False)
         if response.status_code != 200:
@@ -390,17 +405,20 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
             
         soup = BeautifulSoup(response.content, 'html.parser')
         data = []
-        # Default to category name, but try to find specific dataset names
         current_dataset = category_name 
         current_desc = "" 
         
-        # FIX 1: Added 'h4' to the search list to catch nested dataset titles
         elements = soup.find_all(['h2', 'h3', 'h4', 'table'])
         
         for element in elements:
             if element.name in ['h2', 'h3', 'h4']:
                 text = element.text.strip()
-                # filter out short garbage headers
+                clean_text_lower = text.lower()
+                
+                # FIX: If the header is generic, SKIP updating the dataset name
+                if any(x in clean_text_lower for x in IGNORE_HEADERS):
+                    continue
+                
                 if len(text) > 3: 
                     current_dataset = text.lower()
                     
@@ -413,41 +431,29 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         current_desc = "" 
                     
             elif element.name == 'table':
-                # FIX 2: Better Header Detection
-                # Some tables use <th>, some use bold <td> in the first row.
                 rows = element.find_all('tr')
-                if not rows:
-                    continue
+                if not rows: continue
                 
+                # Header detection logic
                 header_cells = element.find_all('th')
-                
-                # If no <th> tags found, try using the first row's <td> tags
                 if not header_cells and rows:
                     header_cells = rows[0].find_all('td')
-                    # If we used the first row as headers, remove it from the data rows list
                     data_rows = rows[1:] 
                 else:
                     data_rows = rows
 
-                if not header_cells:
-                    continue
+                if not header_cells: continue
 
                 table_headers = [th.text.strip().lower().replace(' ', '_') for th in header_cells]
                 
-                # FIX 3: Looser Validation
-                # Added 'field', 'name', 'column' to allowed headers to catch ADS tables
+                # Check if valid table
                 valid_indicators = ['type', 'description', 'data_type', 'field', 'name', 'column']
                 if not table_headers or not any(x in table_headers for x in valid_indicators):
                     continue
                 
-                # extract rows
                 for row in data_rows:
                     columns_ = row.find_all('td')
-                    # skip rows that look like headers (if they were mixed in)
-                    if not columns_: 
-                        continue
-                        
-                    if len(columns_) < len(table_headers): 
+                    if not columns_ or len(columns_) < len(table_headers): 
                         continue
                     
                     entry = {}
@@ -455,31 +461,25 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         if i < len(columns_): 
                             entry[header] = columns_[i].text.strip()
                     
-                    # normalize keys for the app
-                    # Maps "Field Name" or "Field" -> "column_name"
+                    # map common headers to standard keys
                     header_map = {
                         'field': 'column_name', 
                         'field_name': 'column_name',
                         'name': 'column_name', 
                         'type': 'data_type',
                         'data_type': 'data_type',
-                        'description': 'description'
+                        'description': 'description',
+                        'can_be_null?': 'is_nullable' # Added from your screenshot
                     }
                     
                     clean_entry = {header_map.get(k, k): v for k, v in entry.items()}
                     
-                    # Only save if we found a column name
                     if 'column_name' in clean_entry and clean_entry['column_name']:
                         clean_entry['dataset_name'] = current_dataset
                         clean_entry['category'] = category_name
                         clean_entry['url'] = url
                         clean_entry['dataset_description'] = current_desc
-                        
-                        # Fix for ADS: They often lack an explicit "Key" column. 
-                        # We fill it blank so it doesn't break the CSV structure.
-                        if 'key' not in clean_entry:
-                            clean_entry['key'] = ''
-                            
+                        if 'key' not in clean_entry: clean_entry['key'] = ''
                         data.append(clean_entry)
                         
         return data
