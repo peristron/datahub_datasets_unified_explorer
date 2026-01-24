@@ -1624,7 +1624,7 @@ def render_dashboard(df: pd.DataFrame):
     # --- NEW: How to use section (Updated for Analog Mapping) ---
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
-        **Welcome to the Brightspace Dataset Explorer!** This tool acts as a Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries.
+        **Welcome to the Brightspace Dataset Explorer** This tool attempts to be a...Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries, across an ever-growing landscape of available datasets.
         
         1.  **🔍 Search & Context:** Find where columns (e.g., `OrgUnitId`) live and read **summaries** of what each dataset actually does.
         2.  **📋 Compare Schemas:** Use the **Schema Browser** to select multiple datasets and inspect their structures side-by-side.
