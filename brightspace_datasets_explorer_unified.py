@@ -718,11 +718,40 @@ def find_pk_fk_joins_for_selection(df_hash: str, df: pd.DataFrame, selected_tupl
 
 
 def get_joins_for_selection(df: pd.DataFrame, selected_datasets: List[str]) -> pd.DataFrame:
-    """wrapper to call cached join finder with proper cache keys."""
+    """
+    Filter the global join table to only relationships that touch the selected datasets.
+    This keeps all tools (graphs, tables, builder) consistent with get_joins(df).
+    """
     if df.empty or not selected_datasets:
         return pd.DataFrame()
-    df_hash = str(len(df)) + "_" + str(df['dataset_name'].nunique())
-    return find_pk_fk_joins_for_selection(df_hash, df, tuple(selected_datasets))
+    
+    joins = get_joins(df)
+    if joins.empty:
+        return pd.DataFrame()
+    
+    selected = set(selected_datasets)
+    
+    # Keep joins where either side is in the selected set
+    filtered = joins[
+        joins['dataset_name_fk'].isin(selected) |
+        joins['dataset_name_pk'].isin(selected)
+    ].copy()
+    
+    if filtered.empty:
+        return pd.DataFrame()
+    
+    # Shape into the structure expected by downstream UI
+    filtered = filtered.rename(columns={
+        'dataset_name_fk': 'Source Dataset',
+        'dataset_name_pk': 'Target Dataset',
+        'category_pk': 'Target Category'
+    })
+    
+    return (
+        filtered[['Source Dataset', 'column_name', 'Target Dataset', 'Target Category']]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
 # =============================================================================
 # 6. analysis helpers
