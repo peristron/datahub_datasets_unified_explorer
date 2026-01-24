@@ -383,18 +383,20 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
     """
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
-    # NEW: List of headers to IGNORE so we don't lose the actual dataset name
+    # 1. Expanded Ignore List (Includes Menu items and Sub-headers)
     IGNORE_HEADERS = [
-        "returned fields", 
-        "available filters", 
-        "required permission", 
-        "required permissions",
-        "about", 
-        "notes", 
-        "filters",
-        "description",
-        "version history",
-        "table of contents"
+        # Content Sub-headers
+        "returned fields", "available filters", "required permission", "required permissions",
+        "about", "notes", "filters", "description", "version history", "table of contents",
+        "referenced data sets", "interpreting the data",
+        
+        # Sidebar/Nav Menu Noise (Prevents overwriting real names)
+        "about data hub", "set up data hub", "export data in data hub", 
+        "brightspace data sets", "advanced data sets", "performance+", 
+        "brightspace parent & guardian", "creator+", "accessibility",
+        "platform requirements", "hosting", "user administration",
+        "org administration", "system administration", "security administration",
+        "release information", "documentation"
     ]
 
     try:
@@ -408,6 +410,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
         current_dataset = category_name 
         current_desc = "" 
         
+        # Search for Headers and Tables
         elements = soup.find_all(['h2', 'h3', 'h4', 'table'])
         
         for element in elements:
@@ -415,14 +418,17 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 text = element.text.strip()
                 clean_text_lower = text.lower()
                 
-                # FIX: If the header is generic, SKIP updating the dataset name
-                if any(x in clean_text_lower for x in IGNORE_HEADERS):
+                # Validation: Skip generic headers or menu items
+                if any(x == clean_text_lower for x in IGNORE_HEADERS):
                     continue
-                
+                # Also skip if the header *contains* specific trigger words
+                if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
+                    continue
+
                 if len(text) > 3: 
-                    current_dataset = text.lower()
+                    current_dataset = text.title() # Force title case immediately
                     
-                    # Look ahead for description
+                    # Look ahead for description (Next P tag)
                     next_sibling = element.find_next_sibling()
                     if next_sibling and next_sibling.name == 'p':
                         raw_text = next_sibling.text.strip()
@@ -434,7 +440,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 rows = element.find_all('tr')
                 if not rows: continue
                 
-                # Header detection logic
+                # Header Detection (Th or first Td)
                 header_cells = element.find_all('th')
                 if not header_cells and rows:
                     header_cells = rows[0].find_all('td')
@@ -444,9 +450,10 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
 
                 if not header_cells: continue
 
+                # Normalize headers
                 table_headers = [th.text.strip().lower().replace(' ', '_') for th in header_cells]
                 
-                # Check if valid table
+                # Validation: Must look like a schema table
                 valid_indicators = ['type', 'description', 'data_type', 'field', 'name', 'column']
                 if not table_headers or not any(x in table_headers for x in valid_indicators):
                     continue
@@ -461,7 +468,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         if i < len(columns_): 
                             entry[header] = columns_[i].text.strip()
                     
-                    # map common headers to standard keys
+                    # Key Mapping
                     header_map = {
                         'field': 'column_name', 
                         'field_name': 'column_name',
@@ -469,17 +476,31 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         'type': 'data_type',
                         'data_type': 'data_type',
                         'description': 'description',
-                        'can_be_null?': 'is_nullable' # Added from your screenshot
+                        'can_be_null?': 'is_nullable'
                     }
                     
                     clean_entry = {header_map.get(k, k): v for k, v in entry.items()}
                     
                     if 'column_name' in clean_entry and clean_entry['column_name']:
+                        
+                        # --- FIX: NORMALIZE COLUMN NAMES FOR JOINS ---
+                        # Converts "User Id" -> "UserId", "Org Unit Id" -> "OrgUnitId"
+                        col = clean_entry['column_name']
+                        if ' Id' in col: # If space + Id exists
+                            # Regex to remove space before Id (e.g. User Id -> UserId)
+                            col = re.sub(r'\s+Id\b', 'Id', col, flags=re.IGNORECASE)
+                            clean_entry['column_name'] = col
+                        # ---------------------------------------------
+
                         clean_entry['dataset_name'] = current_dataset
                         clean_entry['category'] = category_name
                         clean_entry['url'] = url
                         clean_entry['dataset_description'] = current_desc
-                        if 'key' not in clean_entry: clean_entry['key'] = ''
+                        
+                        # Ensure key field exists (even if empty) for CSV structure
+                        if 'key' not in clean_entry: 
+                            clean_entry['key'] = ''
+                            
                         data.append(clean_entry)
                         
         return data
