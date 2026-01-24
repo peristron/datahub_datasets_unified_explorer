@@ -635,30 +635,34 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         (df['is_primary_key'] == False)
     ].copy()
     
-    alias_joins = pd.DataFrame()
-    if not aliased_fks.empty:
-        # Create a temporary column to bridge the join
-        aliased_fks['target_pk_name'] = aliased_fks['column_name'].map(alias_map)
-        
-        # We use custom suffixes here to ensure we can identify the original columns
-        alias_joins = pd.merge(
-            aliased_fks,
-            pks,
-            left_on='target_pk_name', 
-            right_on='column_name',
-            suffixes=('_src', '_tgt')
-        )
-        
-        # --- CRITICAL FIX START ---
-        # The merge renamed 'column_name' to 'column_name_src'. 
-        # We must restore 'column_name' so it aligns with exact_joins.
-        if 'column_name_src' in alias_joins.columns:
-            alias_joins['column_name'] = alias_joins['column_name_src']
-        # --- CRITICAL FIX END ---
-        
-        # Clean up temp column
-        alias_joins = alias_joins.drop(columns=['target_pk_name'])
+ 	alias_joins = pd.DataFrame()
+	if not aliased_fks.empty:
+		# Create a temporary column to bridge the join
+		aliased_fks['target_pk_name'] = aliased_fks['column_name'].map(alias_map)
+    
+		# IMPORTANT: use the same suffixes as exact_joins so we get
+		# dataset_name_fk / dataset_name_pk, category_fk / category_pk, etc.
+		alias_joins = pd.merge(
+			aliased_fks,
+			pks,
+			left_on='target_pk_name', 
+			right_on='column_name',
+			suffixes=('_fk', '_pk')
+		)
+    
+		# Use the FK-side column name as the join label (e.g., CourseOfferingId)
+		# so downstream code can treat it like other joins.
+            alias_joins['column_name'] = alias_joins['column_name_fk']
+    
+		# Clean up temp column
+		alias_joins = alias_joins.drop(columns=['target_pk_name'])
+    
+    # Clean up temp column
+            alias_joins = alias_joins.drop(columns=['target_pk_name'])
 
+    
+    
+    
     # 5. Combine and Clean
     # Use ignore_index to ensure a clean append
     all_joins = pd.concat([exact_joins, alias_joins], ignore_index=True)
