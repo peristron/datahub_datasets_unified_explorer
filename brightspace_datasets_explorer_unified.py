@@ -2088,13 +2088,43 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
         st.caption("Categories are shown as golden suns, datasets orbit around their category.")
         
         all_ds = sorted(df['dataset_name'].unique())
+        
+        # Row 1: Target Selection
         target = st.selectbox("🎯 Target Dataset (click to highlight connections)", ["None"] + all_ds)
         target_val = None if target == "None" else target
+        
+        # Row 2: Filter Logic (Only appears if a target is selected)
+        active_keys_filter = None
+        
+        if target_val:
+            # Calculate which keys are actually relevant for this dataset's connections
+            # This prevents showing columns that aren't used in joins (like 'GradeValue')
+            joins = get_joins(df)
+            
+            # Get connections involving this dataset
+            relevant_joins = joins[
+                (joins['dataset_name_fk'] == target_val) | 
+                (joins['dataset_name_pk'] == target_val)
+            ]
+            
+            # Extract unique column names used in these joins
+            if not relevant_joins.empty:
+                available_keys = sorted(relevant_joins['column_name'].unique().tolist())
+                
+                # UI Multiselect
+                # Default to None (showing all) to keep the initial view comprehensive
+                active_keys_filter = st.multiselect(
+                    "Filter Connections by Key:", 
+                    available_keys,
+                    placeholder="Select specific keys (e.g. OrgUnitId) to reduce noise...",
+                    help="Use this to hide common keys like 'UserId' and focus on specific structural relationships."
+                )
         
         col_map, col_details = st.columns([3, 1])
         
         with col_map:
-            fig = get_orbital_map(df, target_val)
+            # passes filter selection to the graph generator
+            fig = get_orbital_map(df, target_val, active_keys_filter)
             st.plotly_chart(fig, use_container_width=True)
         
         with col_details:
@@ -2114,8 +2144,7 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                         available_cols = [c for c in display_cols if c in ds_data.columns]
                         st.dataframe(ds_data[available_cols], hide_index=True, use_container_width=True)
             else:
-                st.info("Select a target dataset to see its details and connections.")
-    
+                st.info("Select a target dataset to see its details and connections.")    
     elif graph_type == "Relationship Matrix (Heatmap)":
         st.caption("Heatmap showing which datasets reference which via foreign keys.")
         
