@@ -456,6 +456,11 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     # helper to clean urls and extract category
     def extract_category(url):
         filename = os.path.basename(url).split('?')[0]
+        
+        # NEW LOGIC: Force 'Advanced Data Sets' category for the new URLs
+        if "advanced" in filename.lower():
+            return "Advanced Data Sets"
+            
         clean_name = re.sub(r'^\d+\s*', '', filename)
         return clean_name.replace('-data-sets', '').replace('-', ' ').lower()
     
