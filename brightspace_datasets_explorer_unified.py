@@ -613,7 +613,6 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
 
     # 4. Perform Synonym/Alias Match (The "Smart" Logic)
-    # This maps specific column names (FK) to the target Primary Key name (PK) they likely point to
     alias_map = {
         'CourseOfferingId': 'OrgUnitId',
         'SectionId': 'OrgUnitId',
@@ -637,33 +636,45 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     
     alias_joins = pd.DataFrame()
     if not aliased_fks.empty:
-        # makes temp column to bridge the join
+        # Create a temporary column to bridge the join
         aliased_fks['target_pk_name'] = aliased_fks['column_name'].map(alias_map)
         
+        # We use custom suffixes here to ensure we can identify the original columns
         alias_joins = pd.merge(
             aliased_fks,
             pks,
             left_on='target_pk_name', 
             right_on='column_name',
-            suffixes=('_fk', '_pk')
+            suffixes=('_src', '_tgt')
         )
         
-        # cleans up the temp column so the structure matches exact_joins
+        # --- CRITICAL FIX START ---
+        # The merge renamed 'column_name' to 'column_name_src'. 
+        # We must restore 'column_name' so it aligns with exact_joins.
+        if 'column_name_src' in alias_joins.columns:
+            alias_joins['column_name'] = alias_joins['column_name_src']
+        # --- CRITICAL FIX END ---
+        
+        # Clean up temp column
         alias_joins = alias_joins.drop(columns=['target_pk_name'])
 
-    # 5. combine and clean
-    all_joins = pd.concat([exact_joins, alias_joins])
+    # 5. Combine and Clean
+    # Use ignore_index to ensure a clean append
+    all_joins = pd.concat([exact_joins, alias_joins], ignore_index=True)
     
     if all_joins.empty:
         return pd.DataFrame()
     
-    # excludes self-joins (joining a table to itself)
-    joins = all_joins[all_joins['dataset_name_fk'] != all_joins['dataset_name_pk']]
-    
-    # ensures distinct relationships
-    joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
-    
-    return joins
+    # Exclude self-joins (joining a table to itself)
+    # Note: We check if the FK dataset is the same as the PK dataset
+    if 'dataset_name_fk' in all_joins.columns and 'dataset_name_pk' in all_joins.columns:
+        joins = all_joins[all_joins['dataset_name_fk'] != all_joins['dataset_name_pk']]
+        
+        # Ensure distinct relationships
+        joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
+        return joins
+        
+    return pd.DataFrame()
 
 def get_joins(df: pd.DataFrame) -> pd.DataFrame:
     """wrapper to call cached join calculation with hash for cache key."""
