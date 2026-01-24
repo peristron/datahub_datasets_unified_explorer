@@ -1950,33 +1950,87 @@ that almost every other table links to.
             source_ds = st.selectbox("From Dataset", [""] + all_ds, key="path_source")
         with col_to:
             target_ds = st.selectbox("To Dataset", [""] + all_ds, key="path_target")
-
+#---------------------------------------------------------
+        #------------
+        # Row 2: Configuration & Action
         col_hops, col_limit, col_find = st.columns([1, 1, 2])
-
+        
         with col_hops:
             max_hops = st.number_input(
-                "Max Hops", min_value=1, max_value=6, value=4,
+                "Max Hops",
+                min_value=1,
+                max_value=6,
+                value=4,
                 help="Max number of joins allowed (depth)."
             )
         with col_limit:
             top_k = st.number_input(
-                "Results to Show", min_value=1, max_value=50, value=5,
+                "Results to Show",
+                min_value=1,
+                max_value=50,
+                value=5,
                 help="Number of paths to display."
             )
+            use_core_keys_only = st.checkbox(
+                "Use core keys only (UserId / OrgUnitId)",
+                value=False,
+                help=(
+                    "When enabled, restricts paths to joins on UserId and OrgUnitId. "
+                    "This biases results toward dimension-style paths through Users / Org Units."
+                )
+            )
         with col_find:
-            st.write("")
+            st.write("")  # Spacer for alignment
             st.write("")
             find_path = st.button(
-                "Find Paths", type="primary", use_container_width=True
+                "Find Paths",
+                type="primary",
+                use_container_width=True
             )
-
+        
         if find_path and source_ds and target_ds:
             if source_ds == target_ds:
                 st.warning("Please select two different datasets.")
             else:
+                # Decide which join keys are allowed for this search
+                allowed_keys = ['UserId', 'OrgUnitId'] if use_core_keys_only else None
+
                 with st.spinner("Calculating network paths..."):
-                    paths = find_all_paths(df, source_ds, target_ds,
-                                           cutoff=max_hops, limit=top_k)
+                    paths = find_all_paths(
+                        df,
+                        source_ds,
+                        target_ds,
+                        cutoff=max_hops,
+                        limit=top_k,
+                        allowed_keys=allowed_keys
+                    )
+                
+                if paths:
+                    count = len(paths)
+                    st.success(f"Found top {count} shortest path(s) within {max_hops} hops.")
+                    
+                    for i, path in enumerate(paths):
+                        hops = len(path) - 1
+                        label = f"Option {i+1}: {hops} Join(s)"
+                        if i == 0:
+                            label += " (Shortest)"
+                        
+                        with st.expander(label, expanded=(i == 0)):
+                            # breadcrumb visual
+                            st.markdown(" → ".join([f"**{p}**" for p in path]))
+                            
+                            # detailed breakdown
+                            path_details = get_path_details(df, path)
+                            st.markdown("---")
+                            for step in path_details:
+                                st.markdown(
+                                    f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
+                                )
+                else:
+                    st.error(
+                        f"No path found within {max_hops} hops. "
+                        f"{'Try disabling the core key filter or increasing Max Hops.' if use_core_keys_only else 'These datasets may be unrelated or require a deeper search.'}"
+                    )
 
                 if paths:
                     count = len(paths)
