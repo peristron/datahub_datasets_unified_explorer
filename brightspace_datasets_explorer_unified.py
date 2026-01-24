@@ -100,6 +100,8 @@ st.markdown("""
 # =============================================================================
 
 DEFAULT_URLS = """
+https://community.d2l.com/brightspace/kb/articles/4539-list-of-advanced-data-sets
+https://community.d2l.com/brightspace/kb/articles/4745-competency-reporting-with-ploe-advanced-data-set
 https://community.d2l.com/brightspace/kb/articles/4752-accommodations-data-sets
 https://community.d2l.com/brightspace/kb/articles/4712-activity-feed-data-sets
 https://community.d2l.com/brightspace/kb/articles/4723-announcements-data-sets
