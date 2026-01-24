@@ -485,8 +485,9 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         # --- FINAL NORMALIZATION LOGIC ---
                         
                         # 1. Fix Capitalization of "ID" at end of word (OrgUnitID -> OrgUnitId)
+                        # Use a real word-boundary so we catch final "ID" correctly
                         col = re.sub(r'I[dD]\b', 'Id', col)
-                        
+
                         # 2. Remove ALL spaces (Org Unit Id -> OrgUnitId)
                         # This aligns "Advanced Report" headers with "Standard Extract" headers
                         col = col.replace(' ', '')
