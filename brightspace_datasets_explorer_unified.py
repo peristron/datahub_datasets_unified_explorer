@@ -618,6 +618,7 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
 
     # 4. Perform Synonym/Alias Match (The "Smart" Logic)
+#------------
     alias_map = {
         'CourseOfferingId': 'OrgUnitId',
         'SectionId': 'OrgUnitId',
@@ -627,7 +628,6 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         'AuditorId': 'UserId',
         'EvaluatorId': 'UserId',
         'AssignedToUserId': 'UserId',
-        'LastModifiedBy': 'UserId',
         'CreatedBy': 'UserId',
         'ActionUserId': 'UserId',
         'TargetUserId': 'UserId'
