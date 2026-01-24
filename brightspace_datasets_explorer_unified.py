@@ -585,6 +585,7 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculates join conditions.
     Improves on strict PK/FK matching by inferring FKs if a column name matches a known PK.
+    Also handles D2L specific synonyms (e.g. CourseOfferingId -> OrgUnitId).
     """
     if df.empty:
         return pd.DataFrame()
@@ -598,34 +599,71 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     if pks.empty:
         return pd.DataFrame()
 
-    # 2. identify potential foreign keys
-    # logic: any column that shares a name with a known PK is a potential FK, 
-    # even if not explicitly marked as 'FK' in the documentation 
-    # filtering out the PK rows themselves to avoid self-matching the PK definition
-    
+    # 2. Identify potential foreign keys (Exact Match)
     pk_names = pks['column_name'].unique()
     
-    # Get all columns that match a PK name but aren't the PK row itself
     potential_fks = df[
         (df['column_name'].isin(pk_names)) & 
         (df['is_primary_key'] == False)
     ]
     
-    if potential_fks.empty:
+    # 3. Perform Exact Match Merge
+    exact_joins = pd.DataFrame()
+    if not potential_fks.empty:
+        exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
+
+    # 4. Perform Synonym/Alias Match (The "Smart" Logic)
+    # This maps specific column names (FK) to the target Primary Key name (PK) they likely point to
+    alias_map = {
+        'CourseOfferingId': 'OrgUnitId',
+        'SectionId': 'OrgUnitId',
+        'DepartmentId': 'OrgUnitId',
+        'SemesterId': 'OrgUnitId',
+        'ParentOrgUnitId': 'OrgUnitId',
+        'AuditorId': 'UserId',
+        'EvaluatorId': 'UserId',
+        'AssignedToUserId': 'UserId',
+        'LastModifiedBy': 'UserId',
+        'CreatedBy': 'UserId',
+        'ActionUserId': 'UserId',
+        'TargetUserId': 'UserId'
+    }
+    
+    # Get columns that match our alias list
+    aliased_fks = df[
+        (df['column_name'].isin(alias_map.keys())) & 
+        (df['is_primary_key'] == False)
+    ].copy()
+    
+    alias_joins = pd.DataFrame()
+    if not aliased_fks.empty:
+        # makes temp column to bridge the join
+        aliased_fks['target_pk_name'] = aliased_fks['column_name'].map(alias_map)
+        
+        alias_joins = pd.merge(
+            aliased_fks,
+            pks,
+            left_on='target_pk_name', 
+            right_on='column_name',
+            suffixes=('_fk', '_pk')
+        )
+        
+        # cleans up the temp column so the structure matches exact_joins
+        alias_joins = alias_joins.drop(columns=['target_pk_name'])
+
+    # 5. combine and clean
+    all_joins = pd.concat([exact_joins, alias_joins])
+    
+    if all_joins.empty:
         return pd.DataFrame()
     
-    # merge to find connections (potential_fks -> pks)
-    merged = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
+    # excludes self-joins (joining a table to itself)
+    joins = all_joins[all_joins['dataset_name_fk'] != all_joins['dataset_name_pk']]
     
-    # clean up
-    # exclude self-joins (joining a table to itself)
-    joins = merged[merged['dataset_name_fk'] != merged['dataset_name_pk']]
-    
-    # ensure distinct relationships
+    # ensures distinct relationships
     joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
     
     return joins
-
 
 def get_joins(df: pd.DataFrame) -> pd.DataFrame:
     """wrapper to call cached join calculation with hash for cache key."""
