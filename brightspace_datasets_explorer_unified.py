@@ -471,21 +471,20 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                     
                     if 'column_name' in clean_entry and clean_entry['column_name']:
                         
-                        # --- IMPROVED NORMALIZATION ---
-                        # 1. Strip spaces before ID (User Id -> UserId)
-                        # 2. Fix capitalization (OrgUnitID -> OrgUnitId)
                         col = clean_entry['column_name']
                         
-                        # Regex explanation:
-                        # \s*  -> Match zero or more spaces
-                        # I[dD] -> Match 'Id' or 'ID'
-                        # \b    -> Match end of word (ensures we don't break things like 'Identity')
-                        if re.search(r'\s*I[dD]\b', col):
-                            col = re.sub(r'\s*I[dD]\b', 'Id', col)
-                            
+                        # --- FINAL NORMALIZATION LOGIC ---
+                        
+                        # 1. Fix Capitalization of "ID" at end of word (OrgUnitID -> OrgUnitId)
+                        col = re.sub(r'I[dD]\b', 'Id', col)
+                        
+                        # 2. Remove ALL spaces (Org Unit Id -> OrgUnitId)
+                        # This aligns "Advanced Report" headers with "Standard Extract" headers
+                        col = col.replace(' ', '')
+                        
+                        # ---------------------------------
+                        
                         clean_entry['column_name'] = col
-                        # ------------------------------
-
                         clean_entry['dataset_name'] = current_dataset
                         clean_entry['category'] = category_name
                         clean_entry['url'] = url
