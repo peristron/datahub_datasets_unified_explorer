@@ -982,10 +982,12 @@ def create_spring_graph(
 
 
 @st.cache_data
-def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None) -> go.Figure:
+@st.cache_data
+def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, filter_keys: tuple = None) -> go.Figure:
     """
     generates the 'solar system' map with deterministic geometry.
     categories are suns. datasets are planets.
+    filter_keys: optional tuple of column names to filter connections by.
     """
     if df.empty:
         return go.Figure()
@@ -1029,12 +1031,20 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None) 
             # find outgoing neighbors
             out_ = joins[joins['dataset_name_fk'] == target_node]
             for _, r in out_.iterrows():
+                # FILTER LOGIC
+                if filter_keys and r['column_name'] not in filter_keys:
+                    continue
+                    
                 active_edges.append((target_node, r['dataset_name_pk'], r['column_name']))
                 active_neighbors.add(r['dataset_name_pk'])
                 
             # find incoming neighbors
             in_ = joins[joins['dataset_name_pk'] == target_node]
             for _, r in in_.iterrows():
+                # FILTER LOGIC
+                if filter_keys and r['column_name'] not in filter_keys:
+                    continue
+                    
                 active_edges.append((r['dataset_name_fk'], target_node, r['column_name']))
                 active_neighbors.add(r['dataset_name_fk'])
     
@@ -1172,10 +1182,12 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None) 
     return fig
 
 
-def get_orbital_map(df: pd.DataFrame, target_node: str = None) -> go.Figure:
+def get_orbital_map(df: pd.DataFrame, target_node: str = None, filter_keys: List[str] = None) -> go.Figure:
     """wrapper to call cached orbital map with proper cache key."""
     df_hash = str(len(df)) + "_" + str(df['dataset_name'].nunique())
-    return create_orbital_map(df_hash, df, target_node)
+    # converts list to tuple for hashing/caching
+    safe_keys = tuple(sorted(filter_keys)) if filter_keys else None
+    return create_orbital_map(df_hash, df, target_node, safe_keys)
 
 
 def create_relationship_matrix(df: pd.DataFrame) -> go.Figure:
