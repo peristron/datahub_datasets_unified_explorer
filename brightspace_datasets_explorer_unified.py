@@ -1034,8 +1034,7 @@ def create_spring_graph(
 def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, filter_keys: tuple = None) -> go.Figure:
     """
     generates the 'solar system' map.
-    If filter_keys is provided, it switches to 'Attribute Matching' mode 
-    (connecting datasets based on shared column names rather than strict PK/FKs).
+    Includes dynamic coloring for specific keys/columns.
     """
     if df.empty:
         return go.Figure()
@@ -1061,39 +1060,40 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
     node_line_width, node_line_color = [], []
     cat_x, cat_y, cat_text = [], [], []
     
-    # determine highlights
-    active_edges = []
+    # Group edges by their KEY (Column Name) so we can color them differently
+    # Structure: {'UserId': [(x0,y0,x1,y1), ...], 'OrgUnitId': [...] }
+    edge_groups = {}
     active_neighbors = set()
     
     if target_node:
-        # --- NEW LOGIC START ---
+        # Helper to add edge to groups
+        def add_edge(k, s, t):
+            if k not in edge_groups: edge_groups[k] = []
+            edge_groups[k].append((s, t))
+            
+        # --- LOGIC START ---
         if filter_keys:
             # Attribute/Weak Link Mode
-            # Find all datasets that contain the selected filter_keys
             for key in filter_keys:
-                # Get all datasets containing this specific column
                 matches = df[df['column_name'] == key]['dataset_name'].unique()
-                
                 for match in matches:
                     if match != target_node:
-                        # Draw edge from Target to Match
-                        active_edges.append((target_node, match, key))
+                        add_edge(key, target_node, match)
                         active_neighbors.add(match)
         else:
             # Standard PK/FK Mode
             joins = get_joins(df)
             if not joins.empty:
-                # outgoing
                 out_ = joins[joins['dataset_name_fk'] == target_node]
                 for _, r in out_.iterrows():
-                    active_edges.append((target_node, r['dataset_name_pk'], r['column_name']))
+                    add_edge(r['column_name'], target_node, r['dataset_name_pk'])
                     active_neighbors.add(r['dataset_name_pk'])
-                # incoming
+                    
                 in_ = joins[joins['dataset_name_pk'] == target_node]
                 for _, r in in_.iterrows():
-                    active_edges.append((r['dataset_name_fk'], target_node, r['column_name']))
+                    add_edge(r['column_name'], r['dataset_name_fk'], target_node)
                     active_neighbors.add(r['dataset_name_fk'])
-        # --- NEW LOGIC END ---
+        # --- LOGIC END ---
 
     # build nodes
     for i, cat in enumerate(categories):
@@ -1138,7 +1138,7 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
                         node_size.append(50)
                         node_line_width.append(5); node_line_color.append('white')
                     elif ds_name in active_neighbors:
-                        node_color.append('#00CCFF')
+                        node_color.append('#FFFFFF') # White nodes for connected items
                         node_size.append(15)
                         node_line_width.append(1); node_line_color.append('white')
                     else:
@@ -1154,35 +1154,52 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
                 hover_text = f"<b>{ds_name}</b><br>{desc_short}..." if desc_short else f"<b>{ds_name}</b>"
                 node_text.append(hover_text)
     
-    # build edges
-    edge_x, edge_y, label_x, label_y, label_text = [], [], [], [], []
+    # build traces list (starting with nodes/cats)
+    traces = []
     
-    for s, t, k in active_edges:
-        if s in pos and t in pos:
-            x0, y0 = pos[s]
-            x1, y1 = pos[t]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
-            label_x.append((x0 + x1) / 2)
-            label_y.append((y0 + y1) / 2)
-            label_text.append(k)
+    # 1. Generate Colorful Lines for each Key Group
+    # We use a high-contrast palette
+    palette = [
+        "#00FF00", "#FF00FF", "#00FFFF", "#FFA500", "#FF4500", 
+        "#ADFF2F", "#FF69B4", "#1E90FF", "#FFFF00", "#00CED1"
+    ]
     
-    # create traces
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=2, color='#00FF00'), hoverinfo='none')
-    label_trace = go.Scatter(
-        x=label_x, y=label_y, mode='text', text=label_text,
-        textfont=dict(color='#00FF00', size=11, family="monospace"), hoverinfo='none'
-    )
-    node_trace = go.Scatter(
+    for idx, (key, pairs) in enumerate(edge_groups.items()):
+        ex, ey = [], []
+        for s, t in pairs:
+            if s in pos and t in pos:
+                x0, y0 = pos[s]
+                x1, y1 = pos[t]
+                ex.extend([x0, x1, None])
+                ey.extend([y0, y1, None])
+        
+        color = palette[idx % len(palette)]
+        
+        traces.append(go.Scatter(
+            x=ex, y=ey, 
+            mode='lines', 
+            name=key, # This creates the Legend Item
+            line=dict(width=2, color=color), 
+            hoverinfo='name'
+        ))
+
+    # 2. Add Nodes and Labels
+    traces.append(go.Scatter(
         x=node_x, y=node_y, mode='markers', hoverinfo='text', hovertext=node_text,
-        marker=dict(color=node_color, size=node_size, line=dict(width=node_line_width, color=node_line_color))
-    )
-    cat_label_trace = go.Scatter(x=cat_x, y=cat_y, mode='text', text=cat_text, textfont=dict(color='gold', size=10), hoverinfo='none')
+        marker=dict(color=node_color, size=node_size, line=dict(width=node_line_width, color=node_line_color)),
+        showlegend=False
+    ))
+    
+    traces.append(go.Scatter(
+        x=cat_x, y=cat_y, mode='text', text=cat_text, textfont=dict(color='gold', size=10), hoverinfo='none', showlegend=False
+    ))
     
     fig = go.Figure(
-        data=[edge_trace, label_trace, node_trace, cat_label_trace],
+        data=traces,
         layout=go.Layout(
-            showlegend=False, hovermode='closest', margin=dict(b=0, l=0, r=0, t=0),
+            showlegend=True, # Enable legend so user can toggle specific keys on/off
+            legend=dict(font=dict(color="white"), bgcolor="rgba(0,0,0,0.5)"),
+            hovermode='closest', margin=dict(b=0, l=0, r=0, t=0),
             xaxis=dict(visible=False), yaxis=dict(visible=False),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', height=700
         )
