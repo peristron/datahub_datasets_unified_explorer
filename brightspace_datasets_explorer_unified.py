@@ -1576,14 +1576,17 @@ def render_dashboard(df: pd.DataFrame):
     """renders the main dashboard with overview statistics and intelligent search."""
     st.header("📊 Datahub Datasets Overview")
     
-    # --- NEW: How to use section (Updated Text) ---
+    # --- NEW: How to use section (Updated for Analog Mapping) ---
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
         **Welcome to the Brightspace Dataset Explorer!** This tool acts as a Rosetta Stone for D2L Data Hub, helping you navigate schemas and build queries.
         
         1.  **🔍 Search & Context:** Find where columns (e.g., `OrgUnitId`) live and read **summaries** of what each dataset actually does.
         2.  **📋 Compare Schemas:** Use the **Schema Browser** to select multiple datasets and inspect their structures side-by-side.
-        3.  **🗺️ Map Dependencies:** Visualize how "Fact" tables (Logs) connect to "Dimension" tables (Users, OrgUnits).
+        3.  **🔄 Map Analogs (Reports vs. Extracts):** 
+            *   *Goal:* Re-create an Advanced Dataset (Report) using Brightspace Datasets (Raw Extracts).
+            *   *Action:* Use **Schema Browser** to open the Advanced Dataset (e.g., *All Grades*) next to raw tables (e.g., *Grades*). 
+            *   *Result:* Identify which raw columns match the report columns to build your own custom version.
         4.  **⚡ Build Queries:** Select datasets in the **SQL Builder** to auto-generate the correct `LEFT JOIN` syntax.
         5.  **🤖 Ask AI:** Unlock the **AI Assistant** to ask plain-language questions about the data model.
         
