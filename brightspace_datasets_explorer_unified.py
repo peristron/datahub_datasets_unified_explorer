@@ -1031,12 +1031,11 @@ def create_spring_graph(
 
 
 @st.cache_data
-@st.cache_data
 def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, filter_keys: tuple = None) -> go.Figure:
     """
-    generates the 'solar system' map with deterministic geometry.
-    categories are suns. datasets are planets.
-    filter_keys: optional tuple of column names to filter connections by.
+    generates the 'solar system' map.
+    If filter_keys is provided, it switches to 'Attribute Matching' mode 
+    (connecting datasets based on shared column names rather than strict PK/FKs).
     """
     if df.empty:
         return go.Figure()
@@ -1058,45 +1057,44 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
     cat_step = 2 * math.pi / len(categories) if categories else 1
     
     # trace containers
-    node_x = []
-    node_y = []
-    node_text = []
-    node_color = []
-    node_size = []
-    node_line_width = []
-    node_line_color = []
-    cat_x = []
-    cat_y = []
-    cat_text = []
+    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+    node_line_width, node_line_color = [], []
+    cat_x, cat_y, cat_text = [], [], []
     
     # determine highlights
     active_edges = []
     active_neighbors = set()
     
     if target_node:
-        joins = get_joins(df)
-        
-        if not joins.empty:
-            # find outgoing neighbors
-            out_ = joins[joins['dataset_name_fk'] == target_node]
-            for _, r in out_.iterrows():
-                # FILTER LOGIC
-                if filter_keys and r['column_name'] not in filter_keys:
-                    continue
-                    
-                active_edges.append((target_node, r['dataset_name_pk'], r['column_name']))
-                active_neighbors.add(r['dataset_name_pk'])
+        # --- NEW LOGIC START ---
+        if filter_keys:
+            # Attribute/Weak Link Mode
+            # Find all datasets that contain the selected filter_keys
+            for key in filter_keys:
+                # Get all datasets containing this specific column
+                matches = df[df['column_name'] == key]['dataset_name'].unique()
                 
-            # find incoming neighbors
-            in_ = joins[joins['dataset_name_pk'] == target_node]
-            for _, r in in_.iterrows():
-                # FILTER LOGIC
-                if filter_keys and r['column_name'] not in filter_keys:
-                    continue
-                    
-                active_edges.append((r['dataset_name_fk'], target_node, r['column_name']))
-                active_neighbors.add(r['dataset_name_fk'])
-    
+                for match in matches:
+                    if match != target_node:
+                        # Draw edge from Target to Match
+                        active_edges.append((target_node, match, key))
+                        active_neighbors.add(match)
+        else:
+            # Standard PK/FK Mode
+            joins = get_joins(df)
+            if not joins.empty:
+                # outgoing
+                out_ = joins[joins['dataset_name_fk'] == target_node]
+                for _, r in out_.iterrows():
+                    active_edges.append((target_node, r['dataset_name_pk'], r['column_name']))
+                    active_neighbors.add(r['dataset_name_pk'])
+                # incoming
+                in_ = joins[joins['dataset_name_pk'] == target_node]
+                for _, r in in_.iterrows():
+                    active_edges.append((r['dataset_name_fk'], target_node, r['column_name']))
+                    active_neighbors.add(r['dataset_name_fk'])
+        # --- NEW LOGIC END ---
+
     # build nodes
     for i, cat in enumerate(categories):
         angle = i * cat_step
@@ -1105,19 +1103,15 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
         pos[cat] = (cx, cy)
         
         # add category node
-        node_x.append(cx)
-        node_y.append(cy)
+        node_x.append(cx); node_y.append(cy)
         node_text.append(f"Category: {cat}")
         
         is_dim = (target_node is not None)
         node_color.append('rgba(255, 215, 0, 0.2)' if is_dim else 'rgba(255, 215, 0, 1)')
         node_size.append(35)
-        node_line_width.append(0)
-        node_line_color.append('rgba(0,0,0,0)')
+        node_line_width.append(0); node_line_color.append('rgba(0,0,0,0)')
         
-        cat_x.append(cx)
-        cat_y.append(cy + 3)
-        cat_text.append(cat)
+        cat_x.append(cx); cat_y.append(cy + 3); cat_text.append(cat)
         
         # dataset positions
         cat_ds = datasets[datasets['category'] == cat]
@@ -1136,45 +1130,32 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
                 dy = cy + ds_radius * math.sin(ds_angle)
                 pos[ds_name] = (dx, dy)
                 
-                node_x.append(dx)
-                node_y.append(dy)
+                node_x.append(dx); node_y.append(dy)
                 
                 if target_node:
                     if ds_name == target_node:
                         node_color.append('#00FF00')
                         node_size.append(50)
-                        node_line_width.append(5)
-                        node_line_color.append('white')
+                        node_line_width.append(5); node_line_color.append('white')
                     elif ds_name in active_neighbors:
                         node_color.append('#00CCFF')
                         node_size.append(15)
-                        node_line_width.append(1)
-                        node_line_color.append('white')
+                        node_line_width.append(1); node_line_color.append('white')
                     else:
                         node_color.append('rgba(50,50,50,0.3)')
                         node_size.append(8)
-                        node_line_width.append(0)
-                        node_line_color.append('rgba(0,0,0,0)')
+                        node_line_width.append(0); node_line_color.append('rgba(0,0,0,0)')
                 else:
                     node_color.append('#00CCFF')
                     node_size.append(10)
-                    node_line_width.append(1)
-                    node_line_color.append('rgba(255,255,255,0.3)')
+                    node_line_width.append(1); node_line_color.append('rgba(255,255,255,0.3)')
                 
                 desc_short = str(row.get('description', ''))[:80]
-                if desc_short:
-                    desc_short += "..."
-                    hover_text = f"<b>{ds_name}</b><br>{desc_short}"
-                else:
-                    hover_text = f"<b>{ds_name}</b>"
+                hover_text = f"<b>{ds_name}</b><br>{desc_short}..." if desc_short else f"<b>{ds_name}</b>"
                 node_text.append(hover_text)
     
     # build edges
-    edge_x = []
-    edge_y = []
-    label_x = []
-    label_y = []
-    label_text = []
+    edge_x, edge_y, label_x, label_y, label_text = [], [], [], [], []
     
     for s, t, k in active_edges:
         if s in pos and t in pos:
@@ -1187,45 +1168,23 @@ def create_orbital_map(df_hash: str, df: pd.DataFrame, target_node: str = None, 
             label_text.append(k)
     
     # create traces
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y, mode='lines', 
-        line=dict(width=2, color='#00FF00'), 
-        hoverinfo='none'
-    )
-    
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=2, color='#00FF00'), hoverinfo='none')
     label_trace = go.Scatter(
         x=label_x, y=label_y, mode='text', text=label_text,
-        textfont=dict(color='#00FF00', size=11, family="monospace"),
-        hoverinfo='none'
+        textfont=dict(color='#00FF00', size=11, family="monospace"), hoverinfo='none'
     )
-    
     node_trace = go.Scatter(
-        x=node_x, y=node_y, mode='markers', 
-        hoverinfo='text', hovertext=node_text,
-        marker=dict(
-            color=node_color, 
-            size=node_size, 
-            line=dict(width=node_line_width, color=node_line_color)
-        )
+        x=node_x, y=node_y, mode='markers', hoverinfo='text', hovertext=node_text,
+        marker=dict(color=node_color, size=node_size, line=dict(width=node_line_width, color=node_line_color))
     )
-    
-    cat_label_trace = go.Scatter(
-        x=cat_x, y=cat_y, mode='text', text=cat_text,
-        textfont=dict(color='gold', size=10), 
-        hoverinfo='none'
-    )
+    cat_label_trace = go.Scatter(x=cat_x, y=cat_y, mode='text', text=cat_text, textfont=dict(color='gold', size=10), hoverinfo='none')
     
     fig = go.Figure(
         data=[edge_trace, label_trace, node_trace, cat_label_trace],
         layout=go.Layout(
-            showlegend=False,
-            hovermode='closest',
-            margin=dict(b=0, l=0, r=0, t=0),
-            xaxis=dict(showgrid=False, zeroline=False, visible=False),
-            yaxis=dict(showgrid=False, zeroline=False, visible=False),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            height=700
+            showlegend=False, hovermode='closest', margin=dict(b=0, l=0, r=0, t=0),
+            xaxis=dict(visible=False), yaxis=dict(visible=False),
+            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', height=700
         )
     )
     return fig
