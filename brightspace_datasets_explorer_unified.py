@@ -2105,33 +2105,33 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
         active_keys_filter = None
         
         if target_val:
-            # Calculate which keys are actually relevant for this dataset's connections
-            # This prevents showing columns that aren't used in joins (like 'GradeValue')
-            joins = get_joins(df)
+            # --- NEW: Shared Attribute Calculation ---
+            # 1. Get all columns in the Target Dataset
+            target_cols = set(df[df['dataset_name'] == target_val]['column_name'])
             
-            # Get connections involving this dataset
-            relevant_joins = joins[
-                (joins['dataset_name_fk'] == target_val) | 
-                (joins['dataset_name_pk'] == target_val)
-            ]
+            # 2. Get all columns in ALL OTHER datasets
+            other_cols = set(df[df['dataset_name'] != target_val]['column_name'])
             
-            # Extract unique column names used in these joins
-            if not relevant_joins.empty:
-                available_keys = sorted(relevant_joins['column_name'].unique().tolist())
+            # 3. Find the Intersection (Columns that exist in Target AND at least one other place)
+            # This captures 'Username', 'FirstName', 'Version', 'OrgUnitId', etc.
+            shared_attributes = target_cols.intersection(other_cols)
+            
+            if shared_attributes:
+                available_keys = sorted(list(shared_attributes))
                 
                 # UI Multiselect
-                # Default to None (showing all) to keep the initial view comprehensive
+                st.info("ℹ️ Filter now allows selecting **Shared Attributes** (e.g. Username) in addition to strict Keys.")
                 active_keys_filter = st.multiselect(
-                    "Filter Connections by Key:", 
+                    "Filter Connections by Column Name:", 
                     available_keys,
-                    placeholder="Select specific keys (e.g. OrgUnitId) to reduce noise...",
-                    help="Use this to hide common keys like 'UserId' and focus on specific structural relationships."
+                    placeholder="Select columns (e.g. Username, OrgUnitId) to find shared connections...",
+                    help="Selecting a column here will highlight ANY dataset that shares this column name."
                 )
         
         col_map, col_details = st.columns([3, 1])
         
         with col_map:
-            # passes filter selection to the graph generator
+            # Pass the filter selection to the graph generator
             fig = get_orbital_map(df, target_val, active_keys_filter)
             st.plotly_chart(fig, use_container_width=True)
         
@@ -2152,7 +2152,8 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                         available_cols = [c for c in display_cols if c in ds_data.columns]
                         st.dataframe(ds_data[available_cols], hide_index=True, use_container_width=True)
             else:
-                st.info("Select a target dataset to see its details and connections.")    
+                st.info("Select a target dataset to see its details and connections.")
+    
     elif graph_type == "Relationship Matrix (Heatmap)":
         st.caption("Heatmap showing which datasets reference which via foreign keys.")
         
