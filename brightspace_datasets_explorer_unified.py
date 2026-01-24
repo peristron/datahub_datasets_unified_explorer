@@ -764,19 +764,51 @@ def get_orphan_datasets(df: pd.DataFrame) -> List[str]:
     return orphans
 
 
-def find_all_paths(df: pd.DataFrame, source_dataset: str, target_dataset: str,
-                   cutoff: int = 4, limit: int = 5) -> List[List[str]]:
+#------------
+def find_all_paths(df: pd.DataFrame,
+                   source_dataset: str,
+                   target_dataset: str,
+                   cutoff: int = 4,
+                   limit: int = 5,
+                   allowed_keys: Optional[List[str]] = None) -> List[List[str]]:
     """
     Finds paths using Shortest Path First strategy.
-    Stops execution once 'limit' is reached or paths exceed 'cutoff',
-    preventing exponential hang on high hop counts.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Full metadata dataframe.
+    source_dataset : str
+        Starting dataset name.
+    target_dataset : str
+        Ending dataset name.
+    cutoff : int
+        Maximum number of hops (joins) allowed.
+    limit : int
+        Maximum number of paths to return.
+    allowed_keys : Optional[List[str]]
+        If provided, restricts edges to joins whose column_name is in this list
+        (e.g., ['UserId', 'OrgUnitId']) to bias paths toward core dimensions.
+
+    Returns
+    -------
+    List[List[str]]
+        A list of paths, where each path is a list of dataset names.
     """
     joins = get_joins(df)
 
     if joins.empty:
         return []
 
-    # Build undirected graph
+    # Optional filter: restrict to certain join keys (e.g., UserId, OrgUnitId)
+    if allowed_keys:
+        allowed_set = set(allowed_keys)
+        joins = joins[joins['column_name'].isin(allowed_set)]
+
+        if joins.empty:
+            return []
+
+    # Build undirected graph from (possibly filtered) joins
     G = nx.Graph()
     for _, r in joins.iterrows():
         G.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
@@ -784,7 +816,7 @@ def find_all_paths(df: pd.DataFrame, source_dataset: str, target_dataset: str,
     try:
         path_generator = nx.shortest_simple_paths(G, source_dataset, target_dataset)
 
-        valid_paths = []
+        valid_paths: List[List[str]] = []
         for path in path_generator:
             # checks length constraint (nodes = hops + 1)
             if len(path) - 1 > cutoff:
