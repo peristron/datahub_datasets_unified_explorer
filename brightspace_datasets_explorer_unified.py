@@ -2122,15 +2122,9 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
         active_keys_filter = None
         
         if target_val:
-            # --- NEW: Shared Attribute Calculation ---
-            # 1. Get all columns in the Target Dataset
+            # --- Shared Attribute Calculation ---
             target_cols = set(df[df['dataset_name'] == target_val]['column_name'])
-            
-            # 2. Get all columns in ALL OTHER datasets
             other_cols = set(df[df['dataset_name'] != target_val]['column_name'])
-            
-            # 3. Find the Intersection (Columns that exist in Target AND at least one other place)
-            # This captures 'Username', 'FirstName', 'Version', 'OrgUnitId', etc.
             shared_attributes = target_cols.intersection(other_cols)
             
             if shared_attributes:
@@ -2151,6 +2145,36 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             # Pass the filter selection to the graph generator
             fig = get_orbital_map(df, target_val, active_keys_filter)
             st.plotly_chart(fig, use_container_width=True)
+            
+            # --- NEW: Data Export for Orbital Map ---
+            if active_keys_filter:
+                with st.expander("💾 View & Download Connection Data", expanded=True):
+                    # Reconstruct the connection data for the table
+                    conn_data = []
+                    
+                    # Logic mirrors 'create_orbital_map'
+                    for key in active_keys_filter:
+                        matches = df[df['column_name'] == key]['dataset_name'].unique()
+                        for match in matches:
+                            if match != target_val:
+                                conn_data.append({
+                                    "Target Dataset": target_val,
+                                    "Shared Column": key,
+                                    "Connected Dataset": match,
+                                    "Connected Category": df[df['dataset_name'] == match]['category'].iloc[0]
+                                })
+                    
+                    if conn_data:
+                        conn_df = pd.DataFrame(conn_data)
+                        st.dataframe(conn_df, hide_index=True, use_container_width=True)
+                        
+                        csv = conn_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Download Connections as CSV",
+                            data=csv,
+                            file_name=f"{target_val}_connections.csv",
+                            mime="text/csv"
+                        )
         
         with col_details:
             if target_val:
@@ -2178,7 +2202,6 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
         st.plotly_chart(fig, use_container_width=True)
         
         st.info("💡 Tip: Hover over cells to see the exact connection count. Darker colors = more connections.")
-
 
 def render_schema_browser(df: pd.DataFrame):
     """renders the schema browser and search functionality."""
