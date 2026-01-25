@@ -1380,6 +1380,78 @@ def generate_sql_for_path(path: List[str],
 
     return "\n".join(sql_lines)
 
+#------------
+def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
+    """
+    Generate pandas code to follow a specific dataset path
+    (e.g., ['Users', 'Course Access', 'Grade Results']).
+
+    Uses the same join graph as generate_pandas, but respects the
+    exact dataset order of the provided path.
+    """
+    if len(path) < 2:
+        return "# need at least 2 tables in the path to generate a JOIN."
+
+    # Helper to clean names for python variables (User Logins -> df_user_logins)
+    def clean_var(name: str) -> str:
+        return f"df_{name.lower().replace(' ', '_')}"
+
+    # Build connection graph from global joins
+    G_full = nx.Graph()
+    joins = get_joins(df)
+    if not joins.empty:
+        for _, r in joins.iterrows():
+            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+
+    lines: List[str] = ["import pandas as pd", "", "# 1. Load Dataframes"]
+
+    # Load steps for each table in the path
+    for ds in path:
+        var = clean_var(ds)
+        lines.append(f"{var} = pd.read_csv('{ds}.csv')")
+
+    lines.append("")
+    lines.append("# 2. Perform Merges")
+
+    base_ds = path[0]
+    base_var = clean_var(base_ds)
+
+    lines.append(f"# Starting with {base_ds}")
+    lines.append(f"final_df = {base_var}")
+
+    # Walk the path sequentially, joining each table to its immediate predecessor
+    for i in range(1, len(path)):
+        current_ds = path[i]
+        prev_ds = path[i - 1]
+        current_var = clean_var(current_ds)
+
+        if G_full.has_edge(current_ds, prev_ds):
+            key = G_full[current_ds][prev_ds]['key']
+
+            lines.append("")
+            lines.append(f"# Joining {current_ds} to {prev_ds} on {key}")
+            lines.append("final_df = pd.merge(")
+            lines.append("    final_df,")
+            lines.append(f"    {current_var},")
+            lines.append(f"    on='{key}',")
+            lines.append("    how='left'")
+            lines.append(")")
+        else:
+            lines.append("")
+            lines.append(
+                f"# ⚠️ No direct key found between {prev_ds} and {current_ds} in metadata. "
+                f"Performing cross join (use with caution)."
+            )
+            lines.append("final_df = final_df.merge(")
+            lines.append(f"    {current_var},")
+            lines.append("    how='cross'")
+            lines.append(")")
+
+    lines.append("")
+    lines.append("# 3. Preview Result")
+    lines.append("print(final_df.head())")
+
+    return "\n".join(lines)
 
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
