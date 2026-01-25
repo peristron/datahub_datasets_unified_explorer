@@ -483,8 +483,8 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                     if next_sibling and next_sibling.name == 'p':
                         raw_text = next_sibling.text.strip()
                         current_desc = clean_description(raw_text)
-                else:
-                    current_desc = ""
+                    else:
+                        current_desc = ""
 
             elif element.name == 'table':
                 rows = element.find_all('tr')
