@@ -421,28 +421,70 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
 
         elements = soup.find_all(['h2', 'h3', 'h4', 'table'])
 
-#----------------------------------------------------------------------------------------						
-		for element in elements:
-			if element.name in ['h2', 'h3', 'h4']:
-				text = element.text.strip()
-				clean_text_lower = text.lower()
+def scrape_table(url: str, category_name: str) -> List[Dict]:
+    """
+    parses a d2l knowledge base page to extract dataset definitions AND context descriptions.
+    returns a list of dictionaries representing columns.
+    """
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
-				if any(x == clean_text_lower for x in IGNORE_HEADERS):
-					continue
-				if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
-					continue
-				if clean_text_lower.startswith("about "):  # NEW: Ignore subheaders like "About Time Tracking" to prevent overwrite
-					continue
+    #------------
+    IGNORE_HEADERS = [
+        # boilerplate
+        "returned fields", "available filters", "required permission", "required permissions",
+        "about", "notes", "filters", "description", "version history", "table of contents",
+        "referenced data sets", "interpreting the data",
+        "about data hub", "set up data hub", "export data in data hub",
+        "brightspace data sets", "advanced data sets", "performance+",
+        "brightspace parent & guardian", "creator+", "accessibility",
+        "platform requirements", "hosting", "user administration",
+        "org administration", "system administration", "security administration",
+        "release information", "documentation",
 
-				if len(text) > 3:
-					current_dataset = text.title()
+        # --- added fixes
+        "required config variable", 
+        # (removed: "program level outcomes evaluation (ploe)")
+        "practices in learning objects and data sets",
+        "entity relationship diagram",
+        "note: calculating content completed",
+        "generating the report"
+    ]
 
-					next_sibling = element.find_next_sibling()
-					if next_sibling and next_sibling.name == 'p':
-						raw_text = next_sibling.text.strip()
-						current_desc = clean_description(raw_text)
-				else:
-					current_desc = ""
+    try:
+        response = requests.get(url, headers=headers, timeout=15, verify=False)
+        if response.status_code != 200:
+            logger.warning(f"Status {response.status_code} for {url}")
+            return []
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        data = []
+        current_dataset = category_name
+        current_desc = ""
+
+        elements = soup.find_all(['h2', 'h3', 'h4', 'table'])
+
+        #----------------------------------------------------------------------------------------
+        for element in elements:
+            if element.name in ['h2', 'h3', 'h4']:
+                text = element.text.strip()
+                clean_text_lower = text.lower()
+
+                if any(x == clean_text_lower for x in IGNORE_HEADERS):
+                    continue
+                if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
+                    continue
+                if clean_text_lower.startswith("about "):  # NEW: Ignore subheaders like "About Time Tracking" to prevent overwrite
+                    continue
+
+                if len(text) > 3:
+                    current_dataset = text.title()
+
+                    next_sibling = element.find_next_sibling()
+                    if next_sibling and next_sibling.name == 'p':
+                        raw_text = next_sibling.text.strip()
+                        current_desc = clean_description(raw_text)
+                else:
+                    current_desc = ""
 
             elif element.name == 'table':
                 rows = element.find_all('tr')
@@ -516,7 +558,6 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
     except Exception as e:
         logger.error(f"Failed to scrape {url}: {e}")
         return []
-
 
 def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     """
