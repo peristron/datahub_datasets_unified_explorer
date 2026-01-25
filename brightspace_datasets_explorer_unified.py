@@ -421,25 +421,28 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
 
         elements = soup.find_all(['h2', 'h3', 'h4', 'table'])
 
-        for element in elements:
-            if element.name in ['h2', 'h3', 'h4']:
-                text = element.text.strip()
-                clean_text_lower = text.lower()
+#----------------------------------------------------------------------------------------						
+		for element in elements:
+			if element.name in ['h2', 'h3', 'h4']:
+				text = element.text.strip()
+				clean_text_lower = text.lower()
 
-                if any(x == clean_text_lower for x in IGNORE_HEADERS):
-                    continue
-                if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
-                    continue
+				if any(x == clean_text_lower for x in IGNORE_HEADERS):
+					continue
+				if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
+					continue
+				if clean_text_lower.startswith("about "):  # NEW: Ignore subheaders like "About Time Tracking" to prevent overwrite
+					continue
 
-                if len(text) > 3:
-                    current_dataset = text.title()
+				if len(text) > 3:
+					current_dataset = text.title()
 
-                    next_sibling = element.find_next_sibling()
-                    if next_sibling and next_sibling.name == 'p':
-                        raw_text = next_sibling.text.strip()
-                        current_desc = clean_description(raw_text)
-                    else:
-                        current_desc = ""
+					next_sibling = element.find_next_sibling()
+					if next_sibling and next_sibling.name == 'p':
+						raw_text = next_sibling.text.strip()
+						current_desc = clean_description(raw_text)
+				else:
+					current_desc = ""
 
             elif element.name == 'table':
                 rows = element.find_all('tr')
