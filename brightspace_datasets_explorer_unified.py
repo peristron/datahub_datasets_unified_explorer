@@ -559,6 +559,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
         logger.error(f"Failed to scrape {url}: {e}")
         return []
 
+
 def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     """
     orchestrates the scraping process using threadpoolexecutor.
