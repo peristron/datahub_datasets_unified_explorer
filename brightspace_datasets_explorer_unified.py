@@ -2191,6 +2191,18 @@ that almost every other table links to.
                                 path, df, dialect=path_sql_dialect
                             )
                             st.code(sql_from_path, language="sql")
+                                                    #------------
+                        # generate pandas code for this path as well
+                        st.markdown("#### Generate Pandas Code for This Path")
+                        gen_pandas_for_path = st.button(
+                            "Generate Pandas",
+                            key=f"gen_pandas_for_path_{i}",
+                            use_container_width=True
+                        )
+
+                        if gen_pandas_for_path:
+                            pandas_from_path = generate_pandas_for_path(path, df)
+                            st.code(pandas_from_path, language="python")
             else:
                 st.error(
                     f"No path found within {max_hops} hops. "
