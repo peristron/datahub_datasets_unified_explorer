@@ -1312,6 +1312,75 @@ def create_relationship_matrix(df: pd.DataFrame) -> go.Figure:
 # 8. sql builder engine
 # =============================================================================
 
+#------------
+def generate_sql_for_path(path: List[str],
+                          df: pd.DataFrame,
+                          dialect: str = "T-SQL") -> str:
+    """
+    Generate a LEFT JOIN query that follows a specific dataset path
+    (e.g., ['Users', 'Course Access', 'Grade Results']).
+
+    Uses the same join graph as generate_sql, but respects the exact
+    dataset order of the provided path.
+    """
+    if len(path) < 2:
+        return "-- need at least 2 tables in the path to generate a JOIN."
+
+    # configuration based on dialect
+    if dialect == "T-SQL":
+        q_start, q_end = "[", "]"
+        limit_syntax = "TOP 100"   # Goes after SELECT
+        limit_suffix = ""          # Goes at end
+    else:  # Snowflake and PostgreSQL
+        q_start, q_end = '"', '"'
+        limit_syntax = ""          # Goes after SELECT
+        limit_suffix = "LIMIT 100" # Goes at end
+
+    def quote(name: str) -> str:
+        return f"{q_start}{name}{q_end}"
+
+    # Build connection graph from global joins
+    G_full = nx.Graph()
+    joins = get_joins(df)
+    if not joins.empty:
+        for _, r in joins.iterrows():
+            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+
+    base_table = path[0]
+    aliases = {ds: f"t{i+1}" for i, ds in enumerate(path)}
+
+    # SELECT clause
+    select_part = f"SELECT {limit_syntax}" if limit_syntax else "SELECT"
+    sql_lines = [select_part, f"    {aliases[base_table]}.*"]
+
+    # FROM clause
+    sql_lines.append(f"FROM {quote(base_table)} {aliases[base_table]}")
+
+    # Walk the path sequentially
+    for i in range(1, len(path)):
+        current_table = path[i]
+        prev_table = path[i - 1]
+
+        if G_full.has_edge(current_table, prev_table):
+            key = G_full[current_table][prev_table]['key']
+            join_line = (
+                f"LEFT JOIN {quote(current_table)} {aliases[current_table]} "
+                f"ON {aliases[prev_table]}.{quote(key)} = {aliases[current_table]}.{quote(key)}"
+            )
+            sql_lines.append(join_line)
+        else:
+            # Fallback if metadata has no edge recorded between these two
+            sql_lines.append(
+                f"CROSS JOIN {quote(current_table)} {aliases[current_table]} "
+                f"-- ⚠️ no direct relationship found between {prev_table} and {current_table}"
+            )
+
+    if limit_suffix:
+        sql_lines.append(limit_suffix)
+
+    return "\n".join(sql_lines)
+
+
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
