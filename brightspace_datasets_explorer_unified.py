@@ -386,23 +386,24 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
     """
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
+#------------
     IGNORE_HEADERS = [
         # boilerplate
         "returned fields", "available filters", "required permission", "required permissions",
         "about", "notes", "filters", "description", "version history", "table of contents",
         "referenced data sets", "interpreting the data",
-        "about data hub", "set up data hub", "export data in data hub",
-        "brightspace data sets", "advanced data sets", "performance+",
+        "about data hub", "set up data hub", "export data in data hub", 
+        "brightspace data sets", "advanced data sets", "performance+", 
         "brightspace parent & guardian", "creator+", "accessibility",
         "platform requirements", "hosting", "user administration",
         "org administration", "system administration", "security administration",
         "release information", "documentation",
-
+        
         # --- added fixes
-        "required config variable",
+        "required config variable", 
+        # (removed: "program level outcomes evaluation (ploe)")
         "practices in learning objects and data sets",
         "entity relationship diagram",
-        "program level outcomes evaluation (ploe)",
         "note: calculating content completed",
         "generating the report"
     ]
