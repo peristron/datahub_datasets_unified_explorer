@@ -2087,6 +2087,8 @@ that almost every other table links to.
 #-----------------------------------------------------------------------------------------------------------				
 
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------------
+
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
@@ -2155,67 +2157,88 @@ that almost every other table links to.
                         allowed_keys=allowed_keys
                     )
                 
-                if paths:
-                    count = len(paths)
-                    st.success(f"Found top {count} shortest path(s) within {max_hops} hops.")
+                # Store in session state to persist across reruns
+                st.session_state['path_finder_results'] = {
+                    'paths': paths,
+                    'source_ds': source_ds,
+                    'target_ds': target_ds,
+                    'max_hops': max_hops,
+                    'use_core_keys_only': use_core_keys_only
+                }
+        
+        # Display results if available in session state
+        if 'path_finder_results' in st.session_state:
+            results = st.session_state['path_finder_results']
+            paths = results['paths']
+            #use_core_keys_only = results['use_core_keys_only']  # Retrieve from stored state
+            
+            if paths:
+                count = len(paths)
+                st.success(f"Found top {count} shortest path(s) within {results['max_hops']} hops.")
+                
+                for i, path in enumerate(paths):
+                    hops = len(path) - 1
+                    label = f"Option {i+1}: {hops} Join(s)"
+                    if i == 0:
+                        label += " (Shortest)"
                     
-                    for i, path in enumerate(paths):
-                        hops = len(path) - 1
-                        label = f"Option {i+1}: {hops} Join(s)"
-                        if i == 0:
-                            label += " (Shortest)"
+                    with st.expander(label, expanded=(i == 0)):
+                        # breadcrumb visual
+                        st.markdown(" → ".join([f"**{p}**" for p in path]))
                         
-                        with st.expander(label, expanded=(i == 0)):
-                            # breadcrumb visual
-                            st.markdown(" → ".join([f"**{p}**" for p in path]))
-                            
-                            # detailed breakdown
-                            path_details = get_path_details(df, path)
-                            st.markdown("---")
-                            for step in path_details:
-                                st.markdown(
-                                    f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
-                                )
+                        # detailed breakdown
+                        path_details = get_path_details(df, path)
+                        st.markdown("---")
+                        for step in path_details:
+                            st.markdown(
+                                f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
+                            )
 
-                            # --- NEW: Generate SQL for this specific path ---
-                            st.markdown("#### Generate Query for This Path")
-                            col_sql_dialect, col_sql_btn = st.columns([2, 1])
-                            with col_sql_dialect:
-                                path_sql_dialect = st.selectbox(
-                                    "Dialect",
-                                    ["T-SQL", "Snowflake", "PostgreSQL"],
-                                    key=f"path_sql_dialect_{i}"
-                                )
-                            with col_sql_btn:
-                                st.write("")  # spacer
-                                gen_sql_for_path = st.button(
-                                    "Generate SQL",
-                                    key=f"gen_sql_for_path_{i}",
-                                    use_container_width=True
-                                )
-
-                            if gen_sql_for_path:
-                                sql_from_path = generate_sql_for_path(
-                                    path, df, dialect=path_sql_dialect
-                                )
-                                st.code(sql_from_path, language="sql")
-                                                        #------------
-                            # generate pandas code for this path as well
-                            st.markdown("#### Generate Pandas Code for This Path")
-                            gen_pandas_for_path = st.button(
-                                "Generate Pandas",
-                                key=f"gen_pandas_for_path_{i}",
+                        # --- NEW: Generate SQL for this specific path ---
+                        st.markdown("#### Generate Query for This Path")
+                        col_sql_dialect, col_sql_btn = st.columns([2, 1])
+                        with col_sql_dialect:
+                            path_sql_dialect = st.selectbox(
+                                "Dialect",
+                                ["T-SQL", "Snowflake", "PostgreSQL"],
+                                key=f"path_sql_dialect_{i}"
+                            )
+                        with col_sql_btn:
+                            st.write("")  # spacer
+                            gen_sql_for_path = st.button(
+                                "Generate SQL",
+                                key=f"gen_sql_for_path_{i}",
                                 use_container_width=True
                             )
 
-                            if gen_pandas_for_path:
-                                pandas_from_path = generate_pandas_for_path(path, df)
-                                st.code(pandas_from_path, language="python")
-                else:
-                    st.error(
-                        f"No path found within {max_hops} hops. "
-                        f"{'Try disabling the core key filter or increasing Max Hops.' if use_core_keys_only else 'These datasets may be unrelated or require a deeper search.'}"
-                    )
+                        if gen_sql_for_path:
+                            sql_from_path = generate_sql_for_path(
+                                path, df, dialect=path_sql_dialect
+                            )
+                            st.code(sql_from_path, language="sql")
+                                                    #------------
+                        # generate pandas code for this path as well
+                        st.markdown("#### Generate Pandas Code for This Path")
+                        gen_pandas_for_path = st.button(
+                            "Generate Pandas",
+                            key=f"gen_pandas_for_path_{i}",
+                            use_container_width=True
+                        )
+
+                        if gen_pandas_for_path:
+                            pandas_from_path = generate_pandas_for_path(path, df)
+                            st.code(pandas_from_path, language="python")
+            else:
+                st.error(
+                    f"No path found within {results['max_hops']} hops. "
+                    f"{'Try disabling the core key filter or increasing Max Hops.' if results['use_core_keys_only'] else 'These datasets may be unrelated or require a deeper search.'}"
+                )
+            
+            # Add reset button
+            if st.button("Reset Search"):
+                if 'path_finder_results' in st.session_state:
+                    del st.session_state['path_finder_results']
+                st.rerun()
 
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
