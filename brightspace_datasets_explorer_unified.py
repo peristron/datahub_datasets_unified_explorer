@@ -2084,6 +2084,9 @@ that almost every other table links to.
                 st.dataframe(cat_stats, use_container_width=True, hide_index=True)
 
     # Path finder (advanced only)
+#-----------------------------------------------------------------------------------------------------------				
+
+
     if is_advanced:
         st.divider()
         st.subheader("🛤️ Path Finder")
@@ -2134,109 +2137,84 @@ that almost every other table links to.
                 use_container_width=True
             )
         
-    #------------
-    if find_path and source_ds and target_ds:
-        if source_ds == target_ds:
-            st.warning("Please select two different datasets.")
-        else:
-            # Decide which join keys are allowed for this search
-            allowed_keys = ['UserId', 'OrgUnitId'] if use_core_keys_only else None
-
-            with st.spinner("Calculating network paths..."):
-                paths = find_all_paths(
-                    df,
-                    source_ds,
-                    target_ds,
-                    cutoff=max_hops,
-                    limit=top_k,
-                    allowed_keys=allowed_keys
-                )
-            
-            if paths:
-                count = len(paths)
-                st.success(f"Found top {count} shortest path(s) within {max_hops} hops.")
-                
-                for i, path in enumerate(paths):
-                    hops = len(path) - 1
-                    label = f"Option {i+1}: {hops} Join(s)"
-                    if i == 0:
-                        label += " (Shortest)"
-                    
-                    with st.expander(label, expanded=(i == 0)):
-                        # breadcrumb visual
-                        st.markdown(" → ".join([f"**{p}**" for p in path]))
-                        
-                        # detailed breakdown
-                        path_details = get_path_details(df, path)
-                        st.markdown("---")
-                        for step in path_details:
-                            st.markdown(
-                                f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
-                            )
-
-                        # --- NEW: Generate SQL for this specific path ---
-                        st.markdown("#### Generate Query for This Path")
-                        col_sql_dialect, col_sql_btn = st.columns([2, 1])
-                        with col_sql_dialect:
-                            path_sql_dialect = st.selectbox(
-                                "Dialect",
-                                ["T-SQL", "Snowflake", "PostgreSQL"],
-                                key=f"path_sql_dialect_{i}"
-                            )
-                        with col_sql_btn:
-                            st.write("")  # spacer
-                            gen_sql_for_path = st.button(
-                                "Generate SQL",
-                                key=f"gen_sql_for_path_{i}",
-                                use_container_width=True
-                            )
-
-                        if gen_sql_for_path:
-                            sql_from_path = generate_sql_for_path(
-                                path, df, dialect=path_sql_dialect
-                            )
-                            st.code(sql_from_path, language="sql")
-                                                    #------------
-                        # generate pandas code for this path as well
-                        st.markdown("#### Generate Pandas Code for This Path")
-                        gen_pandas_for_path = st.button(
-                            "Generate Pandas",
-                            key=f"gen_pandas_for_path_{i}",
-                            use_container_width=True
-                        )
-
-                        if gen_pandas_for_path:
-                            pandas_from_path = generate_pandas_for_path(path, df)
-                            st.code(pandas_from_path, language="python")
+        #------------
+        if find_path and source_ds and target_ds:
+            if source_ds == target_ds:
+                st.warning("Please select two different datasets.")
             else:
-                st.error(
-                    f"No path found within {max_hops} hops. "
-                    f"{'Try disabling the core key filter or increasing Max Hops.' if use_core_keys_only else 'These datasets may be unrelated or require a deeper search.'}"
-                )
+                # Decide which join keys are allowed for this search
+                allowed_keys = ['UserId', 'OrgUnitId'] if use_core_keys_only else None
 
+                with st.spinner("Calculating network paths..."):
+                    paths = find_all_paths(
+                        df,
+                        source_ds,
+                        target_ds,
+                        cutoff=max_hops,
+                        limit=top_k,
+                        allowed_keys=allowed_keys
+                    )
+                
                 if paths:
                     count = len(paths)
                     st.success(f"Found top {count} shortest path(s) within {max_hops} hops.")
-
+                    
                     for i, path in enumerate(paths):
                         hops = len(path) - 1
                         label = f"Option {i+1}: {hops} Join(s)"
                         if i == 0:
                             label += " (Shortest)"
-
+                        
                         with st.expander(label, expanded=(i == 0)):
+                            # breadcrumb visual
                             st.markdown(" → ".join([f"**{p}**" for p in path]))
-
+                            
+                            # detailed breakdown
                             path_details = get_path_details(df, path)
                             st.markdown("---")
                             for step in path_details:
                                 st.markdown(
                                     f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
                                 )
+
+                            # --- NEW: Generate SQL for this specific path ---
+                            st.markdown("#### Generate Query for This Path")
+                            col_sql_dialect, col_sql_btn = st.columns([2, 1])
+                            with col_sql_dialect:
+                                path_sql_dialect = st.selectbox(
+                                    "Dialect",
+                                    ["T-SQL", "Snowflake", "PostgreSQL"],
+                                    key=f"path_sql_dialect_{i}"
+                                )
+                            with col_sql_btn:
+                                st.write("")  # spacer
+                                gen_sql_for_path = st.button(
+                                    "Generate SQL",
+                                    key=f"gen_sql_for_path_{i}",
+                                    use_container_width=True
+                                )
+
+                            if gen_sql_for_path:
+                                sql_from_path = generate_sql_for_path(
+                                    path, df, dialect=path_sql_dialect
+                                )
+                                st.code(sql_from_path, language="sql")
+                                                        #------------
+                            # generate pandas code for this path as well
+                            st.markdown("#### Generate Pandas Code for This Path")
+                            gen_pandas_for_path = st.button(
+                                "Generate Pandas",
+                                key=f"gen_pandas_for_path_{i}",
+                                use_container_width=True
+                            )
+
+                            if gen_pandas_for_path:
+                                pandas_from_path = generate_pandas_for_path(path, df)
+                                st.code(pandas_from_path, language="python")
                 else:
                     st.error(
                         f"No path found within {max_hops} hops. "
-                        "These datasets may be unrelated or require a deeper search."
+                        f"{'Try disabling the core key filter or increasing Max Hops.' if use_core_keys_only else 'These datasets may be unrelated or require a deeper search.'}"
                     )
 
 
