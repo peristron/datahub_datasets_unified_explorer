@@ -1,3 +1,4 @@
+#   brightspace_datasets_explorer_unified01312026.py, LKG 01312026
 # =============================================================================
 # unified brightspace dataset explorer
 # combines the best of all three code-bases with simple/advanced modes
@@ -1639,7 +1640,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "🔀 SQL Translator",
                 "🔧 UDF Flattener",
                 "✨ Schema Diff",
-                "🔄 Analog Finder",
                 "🤖 AI Assistant"
             ]
             captions = [
@@ -1651,7 +1651,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Convert T-SQL ↔ Postgres",
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
-                "Find raw analogs for Advanced Datasets",
                 "Ask questions about data"
             ]
 
@@ -2734,4 +2733,584 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                 )
 
             if output_format == "SQL":
-               
+                with col_opts:
+                    dialect = st.selectbox(
+                        "Target Database Dialect",
+                        ["T-SQL", "Snowflake", "PostgreSQL"],
+                        help="Adjusts syntax for quotes ([], \"\") and limits (TOP vs LIMIT)."
+                    )
+                generated_code = generate_sql(selected_datasets, df, dialect)
+                lang_label = "sql"
+                file_ext = "sql"
+                mime_type = "application/sql"
+                download_label = f"Download {dialect} Query"
+            else:
+                with col_opts:
+                    st.caption(
+                        "Generates `pd.read_csv` and `pd.merge` code for local analysis."
+                    )
+
+                generated_code = generate_pandas(selected_datasets, df)
+                lang_label = "python"
+                file_ext = "py"
+                mime_type = "text/x-python"
+                download_label = "Download Python Script"
+
+            col_code, col_schema = st.columns([2, 1])
+
+            with col_code:
+                st.markdown(f"#### Generated {output_format}")
+                st.code(generated_code, language=lang_label)
+
+                st.download_button(
+                    label=f"📥 {download_label}",
+                    data=generated_code,
+                    file_name=f"brightspace_extract.{file_ext}",
+                    mime=mime_type
+                )
+
+            with col_schema:
+                st.markdown("#### Field Reference")
+                for ds in selected_datasets:
+                    with st.expander(f"📦 {ds}", expanded=False):
+                        subset = df[df['dataset_name'] == ds]
+                        display_cols = ['column_name', 'data_type', 'key']
+                        available_cols = [c for c in display_cols if c in subset.columns]
+                        st.dataframe(
+                            subset[available_cols],
+                            hide_index=True,
+                            use_container_width=True,
+                            height=200
+                        )
+
+            with st.expander("🗺️ Join Visualization"):
+                fig = create_spring_graph(
+                    df, selected_datasets, 'focused', 12, 1.0, 400, True
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+
+def render_sql_translator():
+    """renders the sql dialect translation tool."""
+    st.header("🔀 SQL Dialect Translator")
+    st.markdown(
+        "Convert queries between dialects (e.g., T-SQL to PostgreSQL) or to Python/Pandas."
+    )
+
+    if not st.session_state['authenticated']:
+        st.warning(
+            "🔒 Login required. This feature uses the AI engine to ensure accurate syntax translation."
+        )
+        return
+
+    c1, c2 = st.columns(2)
+    with c1:
+        source_lang = st.selectbox(
+            "Source Dialect",
+            ["Auto-Detect", "T-SQL (SQL Server)", "MySQL", "Oracle", "PostgreSQL", "Snowflake"]
+        )
+    with c2:
+        target_lang = st.selectbox(
+            "Target Dialect",
+            ["PostgreSQL", "Snowflake", "T-SQL (SQL Server)", "MySQL", "Python (Pandas)"]
+        )
+
+    input_query = st.text_area(
+        "Paste Source Query",
+        height=200,
+        placeholder="SELECT TOP 10 * FROM Users WHERE CAST(Created AS DATE) = GETDATE()..."
+    )
+
+    if st.button("✨ Translate Code", type="primary"):
+        if not input_query:
+            st.error("Please enter a query to translate.")
+            return
+
+        system_msg = f"""You are an expert SQL Code Translator.
+Task: Convert the following {source_lang} query into optimized {target_lang}.
+
+Rules:
+1. Preserve the original logic exactly.
+2. Convert specific functions (e.g., GETDATE() -> NOW(), TOP -> LIMIT).
+3. If converting to Python/Pandas, assume 'df' is the dataframe.
+4. Output ONLY the code block. No conversational filler.
+5. Add short comments explaining complex changes if necessary.
+"""
+
+        model = "gpt-4o-mini"
+        provider = "OpenAI"
+
+        secret_key = get_secret("openai_api_key") or get_secret("xai_api_key")
+        if not secret_key:
+            st.error("No API Key found. Please login.")
+            return
+
+        try:
+            with st.spinner(f"Translating to {target_lang}..."):
+                base_url = "https://api.x.ai/v1" if "xai" in str(secret_key).lower() else None
+                client = openai.OpenAI(api_key=secret_key, base_url=base_url)
+
+                model_name = model if "xai" not in str(secret_key).lower() else "grok-3-mini"
+
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": input_query}
+                    ]
+                )
+
+                translated_code = response.choices[0].message.content
+
+                st.subheader(f"Output ({target_lang})")
+                st.code(
+                    translated_code,
+                    language="sql" if "Python" not in target_lang else "python"
+                )
+        except Exception as e:
+            st.error(f"Translation failed: {str(e)}")
+
+
+def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
+    """renders the ai chat interface."""
+    st.header("🤖 AI Data Architect Assistant")
+
+    if not st.session_state['authenticated']:
+        st.warning(
+            "🔒 Login required to use AI features. Please enter password in the sidebar."
+        )
+
+        st.info("""
+**What the AI Assistant can do:**
+- Explain dataset relationships and join strategies
+- Suggest optimal query patterns
+- Answer questions about the Brightspace data model
+- Help design complex SQL queries
+""")
+        return
+
+    col_settings, col_chat = st.columns([1, 3])
+
+    with col_settings:
+        st.markdown("#### ⚙️ Settings")
+
+        model_options = list(PRICING_REGISTRY.keys())
+        selected_model = st.selectbox("Model", model_options, index=3)
+
+        model_info = PRICING_REGISTRY[selected_model]
+        provider = model_info['provider']
+
+        st.caption(f"Provider: **{provider}**")
+        st.caption(f"Cost: ${model_info['in']:.2f}/${model_info['out']:.2f} per 1M tokens")
+
+        key_name = "openai_api_key" if provider == "OpenAI" else "xai_api_key"
+        secret_key = get_secret(key_name)
+        if secret_key:
+            st.success(f"✅ {provider} Key Loaded")
+            api_key = secret_key
+        else:
+            api_key = st.text_input(f"{provider} API Key", type="password")
+
+        use_full_context = st.checkbox(
+            "Include Full Schema", value=False,
+            help=(
+                "Send entire database schema to AI. "
+                "Higher cost but more comprehensive answers."
+            )
+        )
+
+        with st.expander("💰 Session Cost", expanded=True):
+            st.metric("Tokens", f"{st.session_state['total_tokens']:,}")
+            st.metric("Cost", f"${st.session_state['total_cost']:.4f}")
+            if st.button("Reset"):
+                st.session_state['total_cost'] = 0.0
+                st.session_state['total_tokens'] = 0
+                st.rerun()
+
+        if st.button("🗑️ Clear Chat"):
+            st.session_state.messages = []
+            st.rerun()
+
+    with col_chat:
+        for m in st.session_state.messages:
+            with st.chat_message(m["role"]):
+                st.markdown(m["content"])
+
+        if prompt := st.chat_input("Ask about the data model..."):
+            if not api_key:
+                st.error("Please provide an API key.")
+                st.stop()
+
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            try:
+                if use_full_context:
+                    schema_text = []
+                    for ds_name, group in df.groupby('dataset_name'):
+                        url = (
+                            group['url'].iloc[0]
+                            if 'url' in group.columns and pd.notna(group['url'].iloc[0])
+                            else ""
+                        )
+                        cols = []
+                        for _, row in group.iterrows():
+                            c = row['column_name']
+                            if row.get('is_primary_key'):
+                                c += " (PK)"
+                            elif row.get('is_foreign_key'):
+                                c += " (FK)"
+                            cols.append(c)
+                        schema_text.append(
+                            f"TABLE: {ds_name}\nURL: {url}\nCOLS: {', '.join(cols)}"
+                        )
+
+                    context = "\n\n".join(schema_text)
+                    scope_msg = "FULL DATABASE SCHEMA"
+                else:
+                    relationships_context = ""
+
+                    if selected_datasets:
+                        context_df = df[df['dataset_name'].isin(selected_datasets)]
+                        scope_msg = f"SELECTED DATASETS: {', '.join(selected_datasets)}"
+
+                        known_joins = get_joins_for_selection(df, selected_datasets)
+
+                        if not known_joins.empty:
+                            relationships_context = (
+                                "\n\nVERIFIED RELATIONSHIPS (Use these strictly for JOIN conditions):\n"
+                            )
+                            for _, row in known_joins.iterrows():
+                                relationships_context += (
+                                    f"- {row['Source Dataset']} joins to {row['Target Dataset']} "
+                                    f"ON column '{row['column_name']}'\n"
+                                )
+                    else:
+                        context_df = df.head(100)
+                        scope_msg = "SAMPLE DATA (first 100 rows)"
+
+                    cols_to_use = ['dataset_name', 'column_name', 'data_type', 'description', 'key']
+                    available_cols = [c for c in cols_to_use if c in context_df.columns]
+
+                    context = context_df[available_cols].to_csv(index=False) + relationships_context
+
+                system_msg = (
+                    "You are an expert SQL Data Architect specializing in Brightspace (D2L) data sets.\n\n"
+                    f"Context: {scope_msg}\n"
+                    "INSTRUCTIONS:\n"
+                    "1. Provide clear, actionable answers about the data model\n"
+                    "2. When suggesting JOINs, use proper syntax and explain the relationship\n"
+                    "3. If dataset URLs are available, reference them for documentation\n"
+                    "4. Be concise but thorough\n"
+                    "SCHEMA DATA:\n"
+                    f"{context[:60000]}"
+                )
+
+                base_url = "https://api.x.ai/v1" if provider == "xAI" else None
+                client = openai.OpenAI(api_key=api_key, base_url=base_url)
+
+                with st.spinner(f"Consulting {selected_model}..."):
+                    response = client.chat.completions.create(
+                        model=selected_model,
+                        messages=[
+                            {"role": "system", "content": system_msg},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+
+                    reply = response.choices[0].message.content
+
+                    if hasattr(response, 'usage') and response.usage:
+                        in_tok = response.usage.prompt_tokens
+                        out_tok = response.usage.completion_tokens
+                        cost = (
+                            in_tok * model_info['in'] / 1_000_000 +
+                            out_tok * model_info['out'] / 1_000_000
+                        )
+                        st.session_state['total_tokens'] += (in_tok + out_tok)
+                        st.session_state['total_cost'] += cost
+
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"AI Error: {str(e)}")
+
+
+def render_kpi_recipes(df: pd.DataFrame):
+    """renders the cookbook of sql recipes."""
+    st.header("📚 KPI Recipes")
+    st.markdown("Pre-packaged SQL queries for common educational analysis questions.")
+
+    all_cats = list(RECIPE_REGISTRY.keys())
+    selected_cat = st.radio(
+        "Category", all_cats, horizontal=True, label_visibility="collapsed"
+    )
+
+    recipes = RECIPE_REGISTRY[selected_cat]
+
+    st.divider()
+
+    for recipe in recipes:
+        with st.container():
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                st.subheader(recipe["title"])
+                st.write(recipe["description"])
+
+                tags = [f"📊 {d}" for d in recipe["datasets"]]
+                tags.append(f"⚡ {recipe['difficulty']}")
+                st.caption(" • ".join(tags))
+
+            with c2:
+                dialect = st.selectbox(
+                    "Dialect",
+                    ["T-SQL", "Snowflake", "PostgreSQL"],
+                    key=f"rec_{recipe['title']}",
+                    label_visibility="collapsed"
+                )
+
+            sql = recipe["sql_template"].strip()
+
+            if dialect == "T-SQL":
+                if "SELECT TOP" not in sql and "SELECT" in sql:
+                    sql = sql.replace("SELECT", "SELECT TOP 100", 1)
+            elif dialect in ["Snowflake", "PostgreSQL"]:
+                sql = sql.replace("SELECT TOP 100", "SELECT")
+                if "LIMIT" not in sql:
+                    sql += "\nLIMIT 100"
+                if dialect == "PostgreSQL":
+                    sql = sql.replace("GETDATE()", "NOW()").replace("DATEADD", "AGE")
+
+            with st.expander("👨‍🍳 View SQL Recipe", expanded=False):
+                st.code(sql, language="sql")
+                st.download_button(
+                    label="📥 Download SQL",
+                    data=sql,
+                    file_name=f"recipe_{recipe['title'].lower().replace(' ', '_')}.sql",
+                    mime="application/sql"
+                )
+
+            st.divider()
+
+# =============================================================================
+# 10. UDF Flattener (EAV → wide)
+# =============================================================================
+
+def render_udf_flattener(df: pd.DataFrame):
+    """renders the EAV pivot tool for user defined fields."""
+    st.header("🔧 UDF Flattener")
+
+    st.markdown("Transform 'vertical' custom data lists into standard 'horizontal' tables.")
+
+    with st.expander("ℹ️ How to use & Where to find Field IDs", expanded=True):
+        c_concept, c_action = st.columns([1, 1])
+
+        with c_concept:
+            st.markdown("**1. The Concept (Pivoting)**")
+            st.code(
+                "# BEFORE (Vertical EAV)\n"
+                "UserId | FieldId | Value\n"
+                "101    | 4       | \"Marketing\"\n"
+                "101    | 9       | \"He/Him\"\n"
+                "# AFTER (Flattened)\n"
+                "UserId | Dept_Marketing | Pronouns_HeHim\n"
+                "101    | \"Marketing\"    | \"He/Him\"",
+                language="text"
+            )
+
+        with c_action:
+            st.markdown("**2. Finding your Field IDs**")
+            st.caption(
+                "Since this app cannot see your data, you must look up your specific "
+                "Field IDs in your database."
+            )
+            st.markdown("Run this SQL in your environment:")
+            st.code(
+                "SELECT FieldId, Name\n"
+                "FROM UserDefinedFields\n"
+                "-- Look for IDs like 4, 9, 12...",
+                language="sql"
+            )
+
+    st.divider()
+
+    # 1. Table selection
+    st.subheader("1. Configuration")
+
+    col_main, col_eav = st.columns(2)
+    all_ds = sorted(df['dataset_name'].unique())
+
+    def_main = "Users" if "Users" in all_ds else (all_ds[0] if all_ds else "")
+    def_eav = "UserUserDefinedFields" if "UserUserDefinedFields" in all_ds else (
+        all_ds[1] if len(all_ds) > 1 else (all_ds[0] if all_ds else "")
+    )
+
+    with col_main:
+        main_table = st.selectbox(
+            "Main Entity Table (The Rows)",
+            all_ds,
+            index=all_ds.index(def_main) if def_main in all_ds else 0
+        )
+    with col_eav:
+        eav_table = st.selectbox(
+            "Attribute Table (The Data)",
+            all_ds,
+            index=all_ds.index(def_eav) if def_eav in all_ds else 0
+        )
+
+    # 2. Column mapping
+    st.subheader("2. Column Mapping")
+
+    main_cols = df[df['dataset_name'] == main_table]['column_name'].tolist()
+    eav_cols = df[df['dataset_name'] == eav_table]['column_name'].tolist()
+    common = list(set(main_cols) & set(eav_cols)) or ["UserId"]
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        default_join_key = 'UserId' if 'UserId' in common else common[0]
+        join_key = st.selectbox(
+            "Join Key (PK)", common,
+            index=common.index(default_join_key),
+            help="The ID connecting both tables."
+        )
+    with c2:
+        if 'FieldId' in eav_cols:
+            piv_idx = eav_cols.index('FieldId')
+        elif 'Name' in eav_cols:
+            piv_idx = eav_cols.index('Name')
+        else:
+            piv_idx = 0
+        pivot_col = st.selectbox(
+            "Attribute Name Column", eav_cols,
+            index=piv_idx,
+            help="The column containing the field identifiers (e.g. 'FieldId' or 'Name')."
+        )
+    with c3:
+        val_idx = eav_cols.index('Value') if 'Value' in eav_cols else 0
+        val_col = st.selectbox(
+            "Value Column", eav_cols,
+            index=val_idx,
+            help="The column containing the actual data."
+        )
+
+    # 3. Field definition
+    st.subheader("3. Define Fields")
+
+    col_input, col_fields = st.columns([1, 2])
+
+    with col_input:
+        input_type = st.radio(
+            "Key Type", ["IDs (Integers)", "Names (Strings)"],
+            help="Are we pivoting on '1, 2, 3' or 'Gender, Dept'?"
+        )
+
+    with col_fields:
+        if input_type == "IDs (Integers)":
+            placeholder = "e.g. 1, 4, 9, 12"
+            help_text = "Enter the Field IDs you found using the SQL tip above."
+        else:
+            placeholder = "e.g. Pronouns, Department, Start Date"
+            help_text = (
+                "Enter the exact Names of the fields you want to turn into columns. "
+                "These must match the data exactly."
+            )
+
+        raw_fields = st.text_area(
+            "Fields to Flatten (comma separated)",
+            placeholder=placeholder,
+            help=help_text
+        )
+
+    # 4. Generator
+    if st.button("Generate Pivot SQL", type="primary"):
+        if not raw_fields:
+            st.error("Please enter at least one field to flatten.")
+        else:
+            fields = [f.strip() for f in raw_fields.split(',') if f.strip()]
+
+            lines = ["SELECT"]
+            lines.append(f"    m.{join_key},")
+
+            for i, f in enumerate(fields):
+                comma = "," if i < len(fields) - 1 else ""
+
+                if input_type == "IDs (Integers)":
+                    match_logic = f"{pivot_col} = {f}"
+                    alias = f"Field_{f}"
+                else:
+                    safe_f = f.replace("'", "''")
+                    match_logic = f"{pivot_col} = '{safe_f}'"
+                    alias = f.replace(' ', '_').replace("'", "")
+
+                lines.append(
+                    f"    MAX(CASE WHEN e.{match_logic} THEN e.{val_col} END) AS {alias}{comma}"
+                )
+
+            lines.append(f"FROM {main_table} m")
+            lines.append(f"LEFT JOIN {eav_table} e ON m.{join_key} = e.{join_key}")
+            lines.append(f"GROUP BY m.{join_key}")
+
+            st.code("\n".join(lines), language="sql")
+            st.caption("Copy this SQL to query your database.")
+
+# =============================================================================
+# 11. main orchestrator
+# =============================================================================
+
+def main():
+    """main entry point that orchestrates the application."""
+
+    # show scrape success message if exists
+    if st.session_state.get('scrape_msg'):
+        st.success(st.session_state['scrape_msg'])
+        st.session_state['scrape_msg'] = None
+
+    # load data
+    df = load_data()
+
+    # render sidebar and get navigation state
+    view, selected_datasets = render_sidebar(df)
+
+    # handle empty data state
+    if df.empty:
+        st.title("🔗 Brightspace Dataset Explorer")
+        st.warning("No data loaded. Please use the sidebar to scrape the Knowledge Base articles.")
+
+        st.markdown("""
+### Getting Started
+1. Open the **Data Management** section in the sidebar  
+2. Click **Scrape & Update All URLs** to load dataset information  
+3. Once loaded, explore relationships, search schemas, and use AI assistance
+""")
+        return
+
+    # route to appropriate view
+    if view == "📊 Dashboard":
+        render_dashboard(df)
+    elif view == "🗺️ Relationship Map":
+        render_relationship_map(df, selected_datasets)
+    elif view == "📋 Schema Browser":
+        render_schema_browser(df)
+    elif view == "📚 KPI Recipes":
+        render_kpi_recipes(df)
+    elif view == "⚡ SQL Builder":
+        render_sql_builder(df, selected_datasets)
+    elif view == "🔀 SQL Translator":
+        render_sql_translator()
+    elif view == "🔧 UDF Flattener":
+        render_udf_flattener(df)
+    elif view == "✨ Schema Diff":
+        st.header("✨ Schema Diff")
+        st.info("Upload a backup CSV to compare against the current schema.")
+        uploaded_file = st.file_uploader("Upload Backup CSV", type="csv")
+        if uploaded_file:
+            st.caption("Diff logic not yet implemented in this version.")
+    elif view == "🤖 AI Assistant":
+        render_ai_assistant(df, selected_datasets)
+
+
+if __name__ == "__main__":
+    main()
