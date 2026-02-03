@@ -1688,7 +1688,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             st.error("❌ No data loaded")
 
         # Data Management / Backup
-        with st.expander("⚙️ Data Management (remove the top 2 URLs below if you don't want to see the ADSs)", expanded=df.empty):
+        with st.expander("⚙️ Data Management", expanded=df.empty):
+            st.caption("Remove the top 2 URLs below if you don't want to see the ADSs.")
             pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
 
             if st.button(
