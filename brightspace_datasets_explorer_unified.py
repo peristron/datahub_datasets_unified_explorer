@@ -1712,7 +1712,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
         # Data Management / Backup
         with st.expander("⚙️ Data Management", expanded=df.empty):
-            st.caption("Remove the top 2 URLs below if you don't want to see the ADSs.")
+            st.caption("Remove the top 2 URLs below if you don't want to include the ADSs' metadata.")
             pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
 
             if st.button(
