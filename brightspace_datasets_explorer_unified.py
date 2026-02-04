@@ -2865,17 +2865,25 @@ Rules:
         model = "gpt-4o-mini"
         provider = "OpenAI"
 
-        secret_key = get_secret("openai_api_key") or get_secret("xai_api_key")
-        if not secret_key:
+#------------------------------
+        openai_key = get_secret("openai_api_key")
+        xai_key = get_secret("xai_api_key")
+
+        if openai_key:
+            secret_key = openai_key
+            base_url = None
+            model_name = "gpt-4o-mini"
+        elif xai_key:
+            secret_key = xai_key
+            base_url = "https://api.x.ai/v1"
+            model_name = "grok-3-mini"
+        else:
             st.error("No API Key found. Please login.")
             return
 
         try:
             with st.spinner(f"Translating to {target_lang}..."):
-                base_url = "https://api.x.ai/v1" if "xai" in str(secret_key).lower() else None
                 client = openai.OpenAI(api_key=secret_key, base_url=base_url)
-
-                model_name = model if "xai" not in str(secret_key).lower() else "grok-3-mini"
 
                 response = client.chat.completions.create(
                     model=model_name,
