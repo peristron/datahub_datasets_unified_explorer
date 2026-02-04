@@ -2111,11 +2111,12 @@ that almost every other table links to.
 
         all_ds = sorted(df['dataset_name'].unique())
 
+#------------------------------
         col_from, col_to = st.columns(2)
         with col_from:
-            source_ds = st.selectbox("From Dataset", [""] + all_ds, key="path_source")
+            source_ds = st.selectbox("From Dataset", all_ds, index=None, placeholder="Select source...", key="path_source")
         with col_to:
-            target_ds = st.selectbox("To Dataset", [""] + all_ds, key="path_target")
+            target_ds = st.selectbox("To Dataset", all_ds, index=None, placeholder="Select target...", key="path_target")
 #---------------------------------------------------------
         #------------
         # Row 2: Configuration & Action
