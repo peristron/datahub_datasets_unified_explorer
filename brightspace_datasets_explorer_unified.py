@@ -338,9 +338,11 @@ def perform_login():
         st.session_state['authenticated'] = False
 
 
+#------------------------------
 def logout():
     """clears authentication state."""
     st.session_state['authenticated'] = False
+    st.session_state['auth_error'] = False
     st.session_state['password_input'] = ""
     st.session_state['messages'] = []
 
