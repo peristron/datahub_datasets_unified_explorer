@@ -2398,14 +2398,16 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
 
                     export_joins = get_joins_for_selection(df, selected_datasets)
 
+#------------------------------
                     for ds in selected_datasets:
-                        dot_lines.append(f'  "{ds}" [label="{ds}"];')
+                        safe_ds = ds.replace('"', '\\"')
+                        dot_lines.append(f'  "{safe_ds}" [label="{safe_ds}"];')
 
                     if not export_joins.empty:
                         for _, row in export_joins.iterrows():
-                            s = row['Source Dataset']
-                            t = row['Target Dataset']
-                            k = row['column_name']
+                            s = row['Source Dataset'].replace('"', '\\"')
+                            t = row['Target Dataset'].replace('"', '\\"')
+                            k = row['column_name'].replace('"', '\\"')
 
                             if mode == 'focused':
                                 if s in selected_datasets and t in selected_datasets:
