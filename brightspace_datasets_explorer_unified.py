@@ -3036,9 +3036,10 @@ def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
 
                     reply = response.choices[0].message.content
 
+#------------------------------
                     if hasattr(response, 'usage') and response.usage:
-                        in_tok = response.usage.prompt_tokens
-                        out_tok = response.usage.completion_tokens
+                        in_tok = response.usage.prompt_tokens or 0
+                        out_tok = response.usage.completion_tokens or 0
                         cost = (
                             in_tok * model_info['in'] / 1_000_000 +
                             out_tok * model_info['out'] / 1_000_000
