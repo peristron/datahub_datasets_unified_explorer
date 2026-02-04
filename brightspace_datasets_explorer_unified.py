@@ -31,10 +31,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+#------------------------------
 # configure structured logging
 logging.basicConfig(
     filename='app.log',
-    filemode='w',
+    filemode='a',
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
