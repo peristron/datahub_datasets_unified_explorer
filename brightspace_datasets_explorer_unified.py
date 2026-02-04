@@ -776,11 +776,12 @@ def get_dataset_connectivity(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+#------------------------------
 def get_hub_datasets(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     """returns the most connected datasets (hubs)."""
     connectivity = get_dataset_connectivity(df)
-    return connectivity.head(top_n)
-
+    hubs = connectivity[connectivity['total_connections'] > 0]
+    return hubs.head(top_n)
 
 def get_orphan_datasets(df: pd.DataFrame) -> List[str]:
     """returns datasets with zero connections."""
