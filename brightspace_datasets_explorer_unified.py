@@ -3398,9 +3398,15 @@ def render_schema_diff(df: pd.DataFrame):
 2. Later, after re-scraping or updating, upload that backup here
 3. Review which datasets/columns were added, removed, or modified
 
+**What We Detect:**
+- 📦 **Dataset-level:** New or removed datasets
+- 📋 **Column-level:** New or removed columns within datasets
+- ✏️ **Value-level:** Changes to column metadata (data_type, description, key)
+
 **Use Cases:**
 - Identify new datasets added by D2L in product updates
 - Track columns that have been deprecated or renamed
+- Spot documentation updates or type changes
 - Audit changes before updating ETL pipelines
 """)
         return
@@ -3430,15 +3436,80 @@ def render_schema_diff(df: pd.DataFrame):
     removed_datasets = backup_datasets - current_datasets
     common_datasets = current_datasets & backup_datasets
 
+    # Prepare column-level and value-level change tracking
+    datasets_with_column_changes = []
+    datasets_with_value_changes = []
+    all_value_changes = []
+
+    # Fields to compare for value-level changes
+    compare_fields = ['data_type', 'description', 'key']
+    available_compare_fields = [f for f in compare_fields if f in df.columns and f in backup_df.columns]
+
+    for ds in sorted(common_datasets):
+        current_cols = set(df[df['dataset_name'] == ds]['column_name'])
+        backup_cols = set(backup_df[backup_df['dataset_name'] == ds]['column_name'])
+
+        added_cols = current_cols - backup_cols
+        removed_cols = backup_cols - current_cols
+        common_cols = current_cols & backup_cols
+
+        if added_cols or removed_cols:
+            datasets_with_column_changes.append({
+                'dataset': ds,
+                'added': added_cols,
+                'removed': removed_cols
+            })
+
+        # Value-level comparison for common columns
+        if available_compare_fields and common_cols:
+            current_subset = df[df['dataset_name'] == ds].set_index('column_name')
+            backup_subset = backup_df[backup_df['dataset_name'] == ds].set_index('column_name')
+
+            ds_value_changes = []
+
+            for col in sorted(common_cols):
+                if col in current_subset.index and col in backup_subset.index:
+                    current_row = current_subset.loc[col]
+                    backup_row = backup_subset.loc[col]
+
+                    # Handle case where index returns multiple rows (duplicates)
+                    if isinstance(current_row, pd.DataFrame):
+                        current_row = current_row.iloc[0]
+                    if isinstance(backup_row, pd.DataFrame):
+                        backup_row = backup_row.iloc[0]
+
+                    for field in available_compare_fields:
+                        current_val = str(current_row.get(field, '')).strip()
+                        backup_val = str(backup_row.get(field, '')).strip()
+
+                        if current_val != backup_val:
+                            change_record = {
+                                'dataset': ds,
+                                'column': col,
+                                'field': field,
+                                'old_value': backup_val if backup_val else '(empty)',
+                                'new_value': current_val if current_val else '(empty)'
+                            }
+                            ds_value_changes.append(change_record)
+                            all_value_changes.append(change_record)
+
+            if ds_value_changes:
+                datasets_with_value_changes.append({
+                    'dataset': ds,
+                    'changes': ds_value_changes
+                })
+
+    # Summary metrics
     col_summary, col_details = st.columns([1, 2])
 
     with col_summary:
         st.subheader("📊 Summary")
         st.metric("Datasets in Current", len(current_datasets))
         st.metric("Datasets in Backup", len(backup_datasets))
-        st.metric("Added", len(added_datasets), delta=f"+{len(added_datasets)}" if added_datasets else None)
-        st.metric("Removed", len(removed_datasets), delta=f"-{len(removed_datasets)}" if removed_datasets else None, delta_color="inverse")
-        st.metric("Unchanged/Modified", len(common_datasets))
+        st.metric("Datasets Added", len(added_datasets), delta=f"+{len(added_datasets)}" if added_datasets else None)
+        st.metric("Datasets Removed", len(removed_datasets), delta=f"-{len(removed_datasets)}" if removed_datasets else None, delta_color="inverse")
+        st.metric("Columns Changed", len(datasets_with_column_changes), help="Datasets with added or removed columns")
+        st.metric("Values Modified", len(all_value_changes), help="Individual field value changes detected")
 
     with col_details:
         st.subheader("🔍 Dataset Changes")
@@ -3462,52 +3533,85 @@ def render_schema_diff(df: pd.DataFrame):
 
     st.divider()
 
-    # Column-level comparison for common datasets
-    st.subheader("📋 Column-Level Changes")
+    # Column-level changes (added/removed columns)
+    st.subheader("📋 Column-Level Changes (Added/Removed)")
 
-    if common_datasets:
-        datasets_with_changes = []
+    if datasets_with_column_changes:
+        st.warning(f"**{len(datasets_with_column_changes)}** dataset(s) have column additions or removals.")
 
-        for ds in sorted(common_datasets):
-            current_cols = set(df[df['dataset_name'] == ds]['column_name'])
-            backup_cols = set(backup_df[backup_df['dataset_name'] == ds]['column_name'])
+        for change in datasets_with_column_changes:
+            with st.expander(f"📦 {change['dataset']} (+{len(change['added'])} / -{len(change['removed'])})"):
+                c1, c2 = st.columns(2)
 
-            added_cols = current_cols - backup_cols
-            removed_cols = backup_cols - current_cols
+                with c1:
+                    if change['added']:
+                        st.markdown("**Added Columns:**")
+                        for col in sorted(change['added']):
+                            st.markdown(f"- `{col}` ➕")
+                    else:
+                        st.caption("No columns added.")
 
-            if added_cols or removed_cols:
-                datasets_with_changes.append({
-                    'dataset': ds,
-                    'added': added_cols,
-                    'removed': removed_cols
-                })
-
-        if datasets_with_changes:
-            st.warning(f"**{len(datasets_with_changes)}** dataset(s) have column changes.")
-
-            for change in datasets_with_changes:
-                with st.expander(f"📦 {change['dataset']} (+{len(change['added'])} / -{len(change['removed'])})"):
-                    c1, c2 = st.columns(2)
-
-                    with c1:
-                        if change['added']:
-                            st.markdown("**Added Columns:**")
-                            for col in sorted(change['added']):
-                                st.markdown(f"- `{col}` ➕")
-                        else:
-                            st.caption("No columns added.")
-
-                    with c2:
-                        if change['removed']:
-                            st.markdown("**Removed Columns:**")
-                            for col in sorted(change['removed']):
-                                st.markdown(f"- `{col}` ➖")
-                        else:
-                            st.caption("No columns removed.")
-        else:
-            st.success("No column-level changes detected in common datasets.")
+                with c2:
+                    if change['removed']:
+                        st.markdown("**Removed Columns:**")
+                        for col in sorted(change['removed']):
+                            st.markdown(f"- `{col}` ➖")
+                    else:
+                        st.caption("No columns removed.")
     else:
-        st.info("No common datasets to compare at column level.")
+        st.success("No columns were added or removed in common datasets.")
+
+    st.divider()
+
+    # Value-level changes (metadata modifications)
+    st.subheader("✏️ Value-Level Changes (Metadata Modifications)")
+
+    if not available_compare_fields:
+        st.warning("Cannot compare values — backup CSV is missing comparison fields (data_type, description, key).")
+    elif datasets_with_value_changes:
+        st.warning(f"**{len(all_value_changes)}** value change(s) detected across **{len(datasets_with_value_changes)}** dataset(s).")
+
+        # Group by field type for filtering
+        field_counts = {}
+        for change in all_value_changes:
+            field_counts[change['field']] = field_counts.get(change['field'], 0) + 1
+
+        st.caption(f"By field: {', '.join([f'{k}: {v}' for k, v in field_counts.items()])}")
+
+        # Filter option
+        filter_field = st.selectbox(
+            "Filter by field type:",
+            ["All Fields"] + available_compare_fields,
+            help="Focus on specific types of changes."
+        )
+
+        for ds_change in datasets_with_value_changes:
+            ds = ds_change['dataset']
+            changes = ds_change['changes']
+
+            if filter_field != "All Fields":
+                changes = [c for c in changes if c['field'] == filter_field]
+
+            if not changes:
+                continue
+
+            with st.expander(f"📦 {ds} ({len(changes)} change(s))"):
+                for change in changes:
+                    col_name = change['column']
+                    field = change['field']
+                    old_val = change['old_value']
+                    new_val = change['new_value']
+
+                    # Truncate long values for display
+                    old_display = old_val[:100] + "..." if len(old_val) > 100 else old_val
+                    new_display = new_val[:100] + "..." if len(new_val) > 100 else new_val
+
+                    st.markdown(f"**`{col_name}`** — *{field}* changed:")
+                    st.markdown(f"  - Old: `{old_display}`")
+                    st.markdown(f"  - New: `{new_display}`")
+                    st.markdown("---")
+    else:
+        st.success("No value-level changes detected in common columns.")
 
     # Export diff report
     st.divider()
@@ -3516,20 +3620,62 @@ def render_schema_diff(df: pd.DataFrame):
     diff_data = []
 
     for ds in sorted(added_datasets):
-        diff_data.append({"Change Type": "Dataset Added", "Dataset": ds, "Column": "", "Category": df[df['dataset_name'] == ds]['category'].iloc[0] if not df[df['dataset_name'] == ds].empty else ""})
+        cat = df[df['dataset_name'] == ds]['category'].iloc[0] if not df[df['dataset_name'] == ds].empty else ""
+        diff_data.append({
+            "Change Type": "Dataset Added",
+            "Dataset": ds,
+            "Column": "",
+            "Field": "",
+            "Old Value": "",
+            "New Value": "",
+            "Category": cat
+        })
 
     for ds in sorted(removed_datasets):
-        diff_data.append({"Change Type": "Dataset Removed", "Dataset": ds, "Column": "", "Category": backup_df[backup_df['dataset_name'] == ds]['category'].iloc[0] if not backup_df[backup_df['dataset_name'] == ds].empty else ""})
+        cat = backup_df[backup_df['dataset_name'] == ds]['category'].iloc[0] if not backup_df[backup_df['dataset_name'] == ds].empty else ""
+        diff_data.append({
+            "Change Type": "Dataset Removed",
+            "Dataset": ds,
+            "Column": "",
+            "Field": "",
+            "Old Value": "",
+            "New Value": "",
+            "Category": cat
+        })
 
-    for ds in sorted(common_datasets):
-        current_cols = set(df[df['dataset_name'] == ds]['column_name'])
-        backup_cols = set(backup_df[backup_df['dataset_name'] == ds]['column_name'])
+    for change in datasets_with_column_changes:
+        ds = change['dataset']
+        for col in sorted(change['added']):
+            diff_data.append({
+                "Change Type": "Column Added",
+                "Dataset": ds,
+                "Column": col,
+                "Field": "",
+                "Old Value": "",
+                "New Value": "",
+                "Category": ""
+            })
+        for col in sorted(change['removed']):
+            diff_data.append({
+                "Change Type": "Column Removed",
+                "Dataset": ds,
+                "Column": col,
+                "Field": "",
+                "Old Value": "",
+                "New Value": "",
+                "Category": ""
+            })
 
-        for col in sorted(current_cols - backup_cols):
-            diff_data.append({"Change Type": "Column Added", "Dataset": ds, "Column": col, "Category": ""})
-
-        for col in sorted(backup_cols - current_cols):
-            diff_data.append({"Change Type": "Column Removed", "Dataset": ds, "Column": col, "Category": ""})
+    for change in all_value_changes:
+        diff_data.append({
+            "Change Type": "Value Modified",
+            "Dataset": change['dataset'],
+            "Column": change['column'],
+            "Field": change['field'],
+            "Old Value": change['old_value'],
+            "New Value": change['new_value'],
+            "Category": ""
+        })
 
     if diff_data:
         diff_df = pd.DataFrame(diff_data)
