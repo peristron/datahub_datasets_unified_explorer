@@ -512,6 +512,7 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         if i < len(columns_):
                             entry[header] = columns_[i].text.strip()
 
+#------------------------------
                     header_map = {
                         'field': 'column_name',
                         'field_name': 'column_name',
@@ -519,7 +520,9 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                         'type': 'data_type',
                         'data_type': 'data_type',
                         'description': 'description',
-                        'can_be_null?': 'is_nullable'
+                        'can_be_null?': 'is_nullable',
+                        'version_added': 'version_history',
+                        'version': 'version_history'
                     }
 
                     clean_entry = {header_map.get(k, k): v for k, v in entry.items()}
