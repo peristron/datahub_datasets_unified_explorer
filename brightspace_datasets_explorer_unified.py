@@ -369,6 +369,7 @@ def clear_all_selections():
 # 5. data layer (scraper & storage)
 # =============================================================================
 
+#------------------------------
 def clean_description(text: str) -> str:
     """
     Logic to convert raw documentation text into a concise summary.
@@ -377,16 +378,37 @@ def clean_description(text: str) -> str:
     if not text:
         return ""
 
-    # 1. Remove common D2L boilerplate
-    text = re.sub(r'^The .*? data set (describes|contains|provides) ', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'^This (data set|table) (describes|contains|provides) ', '', text, flags=re.IGNORECASE)
+    # 1. Normalize whitespace (collapse multiple spaces, strip leading/trailing)
+    text = re.sub(r'\s+', ' ', text).strip()
 
-    # 2. Capitalize first letter if needed
-    text = text[0].upper() + text[1:] if text else text
+    # 2. Remove common D2L boilerplate patterns
+    boilerplate_patterns = [
+        r'^The .*? data set (describes|contains|provides|returns|includes) ',
+        r'^This (data set|table|dataset) (describes|contains|provides|returns|includes) ',
+        r'^Use this data set to ',
+        r'^This is a ',
+        r'^Contains ',
+    ]
+    for pattern in boilerplate_patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
-    # 3. Limit to the first 2 sentences for brevity
+    # 3. Remove any leading connector words left after stripping
+    text = re.sub(r'^(the|a|an|all|each|every) ', '', text, flags=re.IGNORECASE)
+
+    # 4. Capitalize first letter if needed
+    if text:
+        text = text[0].upper() + text[1:]
+
+    # 5. Limit to the first 2 complete sentences for brevity
     sentences = re.split(r'(?<=[.!?]) +', text)
     summary = ' '.join(sentences[:2])
+
+    # 6. Ensure summary ends with proper punctuation (avoid trailing fragments)
+    if summary and summary[-1] not in '.!?':
+        # Find last sentence boundary and truncate
+        last_boundary = max(summary.rfind('.'), summary.rfind('!'), summary.rfind('?'))
+        if last_boundary > 0:
+            summary = summary[:last_boundary + 1]
 
     return summary
 
