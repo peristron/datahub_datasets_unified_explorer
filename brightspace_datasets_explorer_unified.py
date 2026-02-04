@@ -752,13 +752,16 @@ def get_dataset_connectivity(df: pd.DataFrame) -> pd.DataFrame:
             outgoing = len(joins[joins['dataset_name_fk'] == ds])
             incoming = len(joins[joins['dataset_name_pk'] == ds])
 
+#------------------------------
+        ds_subset = df[df['dataset_name'] == ds]
+        category = ds_subset['category'].iloc[0] if not ds_subset.empty else ''
+
         connectivity.append({
             'dataset_name': ds,
             'outgoing_fks': outgoing,
             'incoming_fks': incoming,
             'total_connections': outgoing + incoming,
-            'category': df[df['dataset_name'] == ds]['category'].iloc[0]
-            if len(df[df['dataset_name'] == ds]) > 0 else ''
+            'category': category
         })
 
     return pd.DataFrame(connectivity).sort_values('total_connections', ascending=False)
