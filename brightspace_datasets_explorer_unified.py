@@ -1880,18 +1880,31 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         else:
             st.error("❌ No data loaded")
 
+#------------------------------
         # Data Management / Backup
         with st.expander("⚙️ Data Management", expanded=df.empty):
-            st.caption("Remove the top 2 URLs below if you don't want to include the ADSs' metadata.")
-            pasted_text = st.text_area("URLs to Scrape", height=100, value=DEFAULT_URLS)
+            # Count current URLs
+            current_urls = st.session_state.get('custom_urls') or DEFAULT_URLS
+            url_count = len([u for u in current_urls.strip().split('\n') if u.strip().startswith('http')])
+            
+            st.caption(f"Currently configured: **{url_count}** URLs")
+            
+            if st.button(
+                "✏️ Edit URLs (Full View)",
+                use_container_width=True,
+                help="Open a full-width editor to view and edit scrape URLs."
+            ):
+                st.session_state['show_url_editor'] = True
+                st.rerun()
 
             if st.button(
-                "🔄 Scrape & Update All URLs",
+                "🔄 Scrape & Update",
                 type="primary",
                 use_container_width=True,
-                help="Scrape the URLs listed above, add any new datasets found, and refresh the schema."
+                help="Scrape the configured URLs and refresh the schema."
             ):
-                urls = [u.strip() for u in pasted_text.split('\n') if u.strip().startswith('http')]
+                urls_text = st.session_state.get('custom_urls') or DEFAULT_URLS
+                urls = [u.strip() for u in urls_text.split('\n') if u.strip().startswith('http')]
                 if urls:
                     with st.spinner(f"Scraping {len(urls)} pages..."):
                         new_df = scrape_and_save(urls)
@@ -1902,7 +1915,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                             load_data.clear()
                             st.rerun()
                 else:
-                    st.error("No valid URLs found")
+                    st.error("No valid URLs configured. Use 'Edit URLs' to add some.")
 
             if not df.empty:
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
