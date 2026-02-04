@@ -810,11 +810,12 @@ def get_hub_datasets(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     hubs = connectivity[connectivity['total_connections'] > 0]
     return hubs.head(top_n)
 
+#------------------------------
 def get_orphan_datasets(df: pd.DataFrame) -> List[str]:
-    """returns datasets with zero connections."""
+    """returns datasets with zero connections, sorted alphabetically."""
     connectivity = get_dataset_connectivity(df)
     orphans = connectivity[connectivity['total_connections'] == 0]['dataset_name'].tolist()
-    return orphans
+    return sorted(orphans)
 
 
 #------------
