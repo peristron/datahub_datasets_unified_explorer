@@ -604,9 +604,10 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     df['dataset_name'] = df['dataset_name'].astype(str).str.title()
     df['category'] = df['category'].astype(str).str.title()
 
+#------------------------------
     # ensure expected columns exist
     expected_cols = ['category', 'dataset_name', 'dataset_description', 'column_name',
-                     'data_type', 'description', 'key', 'url']
+                     'data_type', 'description', 'key', 'url', 'version_history', 'is_nullable']
     for col in expected_cols:
         if col not in df.columns:
             df[col] = ''
