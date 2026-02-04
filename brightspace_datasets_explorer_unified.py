@@ -1421,10 +1421,12 @@ def create_relationship_matrix(df: pd.DataFrame, filter_connected_only: bool = T
         ],
         showscale=True,
         colorbar=dict(
-            title="Joins",
-            titleside="right",
-            tickfont=dict(color='white'),
-            titlefont=dict(color='white')
+            title=dict(
+                text="Joins",
+                side="right",
+                font=dict(color='white')
+            ),
+            tickfont=dict(color='white')
         )
     ))
 
