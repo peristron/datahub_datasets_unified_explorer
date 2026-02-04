@@ -3799,12 +3799,9 @@ def main():
         render_sql_translator()
     elif view == "🔧 UDF Flattener":
         render_udf_flattener(df)
+#------------------------------
     elif view == "✨ Schema Diff":
-        st.header("✨ Schema Diff")
-        st.info("Upload a backup CSV to compare against the current schema.")
-        uploaded_file = st.file_uploader("Upload Backup CSV", type="csv")
-        if uploaded_file:
-            st.caption("Diff logic not yet implemented in this version.")
+        render_schema_diff(df)
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)
 
