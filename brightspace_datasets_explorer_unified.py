@@ -3997,6 +3997,7 @@ def render_udf_flattener(df: pd.DataFrame):
 # 11. main orchestrator
 # =============================================================================
 
+#------------------------------
 def main():
     """main entry point that orchestrates the application."""
 
@@ -4010,6 +4011,11 @@ def main():
 
     # render sidebar and get navigation state
     view, selected_datasets = render_sidebar(df)
+
+    # check if URL editor is requested (takes priority over normal views)
+    if st.session_state.get('show_url_editor'):
+        render_url_editor()
+        return
 
     # handle empty data state
     if df.empty:
