@@ -1572,6 +1572,7 @@ def generate_sql_for_path(path: List[str],
     return "\n".join(sql_lines)
 
 #------------
+#------------------------------
 def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     """
     Generate pandas code to follow a specific dataset path
@@ -1580,6 +1581,9 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     Uses the same join graph as generate_pandas, but respects the
     exact dataset order of the provided path.
     """
+    # remove duplicates while preserving order
+    path = list(dict.fromkeys(path))
+
     if len(path) < 2:
         return "# need at least 2 tables in the path to generate a JOIN."
 
