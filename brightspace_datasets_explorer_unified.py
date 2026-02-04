@@ -1497,6 +1497,7 @@ def create_relationship_matrix(df: pd.DataFrame, filter_connected_only: bool = T
 # =============================================================================
 
 #------------
+#------------------------------
 def generate_sql_for_path(path: List[str],
                           df: pd.DataFrame,
                           dialect: str = "T-SQL") -> str:
@@ -1507,6 +1508,9 @@ def generate_sql_for_path(path: List[str],
     Uses the same join graph as generate_sql, but respects the exact
     dataset order of the provided path.
     """
+    # remove duplicates while preserving order
+    path = list(dict.fromkeys(path))
+
     if len(path) < 2:
         return "-- need at least 2 tables in the path to generate a JOIN."
 
