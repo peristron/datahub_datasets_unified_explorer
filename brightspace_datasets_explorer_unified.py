@@ -450,7 +450,8 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
             logger.warning(f"Status {response.status_code} for {url}")
             return []
 
-        soup = BeautifulSoup(response.content, 'html.parser')
+#------------------------------
+        soup = BeautifulSoup(response.text, 'html.parser')
         data = []
         current_dataset = category_name
         current_desc = ""
