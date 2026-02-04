@@ -1957,6 +1957,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             else:
                 select_mode = "Templates"
 
+#------------------------------
             if select_mode == "Templates":
                 templates = {
                     "User Progress": ["Users", "User Enrollments", "Content User Progress", "Course Access"],
@@ -1966,15 +1967,50 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Assignments": ["Assignment Objects", "Assignment Submissions", "Assignment Feedback"]
                 }
 
-                chosen_template = st.selectbox(
+                # pre-validate which templates have all datasets available
+                available_datasets = set(df['dataset_name'].unique())
+                template_status = {}
+                for name, datasets in templates.items():
+                    available = [ds for ds in datasets if ds in available_datasets]
+                    missing = [ds for ds in datasets if ds not in available_datasets]
+                    template_status[name] = {
+                        'available': available,
+                        'missing': missing,
+                        'complete': len(missing) == 0
+                    }
+
+                # build display labels showing availability
+                template_options = ["Custom Selection..."]
+                for name in templates.keys():
+                    status = template_status[name]
+                    if status['complete']:
+                        template_options.append(f"✅ {name}")
+                    elif len(status['available']) > 0:
+                        template_options.append(f"⚠️ {name} (partial)")
+                    else:
+                        template_options.append(f"❌ {name} (unavailable)")
+
+                chosen_option = st.selectbox(
                     "Select a Scenario:",
-                    ["Custom Selection..."] + list(templates.keys())
+                    template_options
                 )
 
-                if chosen_template != "Custom Selection...":
-                    st.session_state['selected_datasets'] = templates[chosen_template]
-                    selected_datasets = st.session_state['selected_datasets']
-                    st.success(f"Loaded {len(selected_datasets)} datasets for {chosen_template}")
+                if chosen_option != "Custom Selection...":
+                    # extract template name from display label
+                    chosen_template = chosen_option.split(" ", 1)[1].replace(" (partial)", "").replace(" (unavailable)", "")
+                    status = template_status[chosen_template]
+
+                    if status['missing']:
+                        st.warning(f"⚠️ Missing datasets: {', '.join(status['missing'])}")
+                        st.caption("These datasets may not have been scraped or may have different names.")
+
+                    if status['available']:
+                        st.session_state['selected_datasets'] = status['available']
+                        selected_datasets = status['available']
+                        st.success(f"Loaded {len(selected_datasets)}/{len(templates[chosen_template])} datasets for {chosen_template}")
+                    else:
+                        st.error("No datasets from this template are available.")
+                        selected_datasets = []
                 else:
                     all_ds = sorted(df['dataset_name'].unique())
                     selected_datasets = st.multiselect(
