@@ -998,17 +998,20 @@ def create_spring_graph(
         x1, y1 = pos[edge[1]]
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
+#------------------------------
         if show_edge_labels:
-            annotations.append(dict(
-                x=(x0 + x1) / 2,
-                y=(y0 + y1) / 2,
-                text=edge[2].get('label', ''),
-                showarrow=False,
-                font=dict(color="#58A6FF", size=max(10, graph_font_size - 1), family="monospace"),
-                bgcolor="#1E232B",
-                borderpad=2,
-                opacity=0.9
-            ))
+            label_text = edge[2].get('label', '')
+            if label_text:
+                annotations.append(dict(
+                    x=(x0 + x1) / 2,
+                    y=(y0 + y1) / 2,
+                    text=label_text,
+                    showarrow=False,
+                    font=dict(color="#58A6FF", size=max(10, graph_font_size - 1), family="monospace"),
+                    bgcolor="#1E232B",
+                    borderpad=2,
+                    opacity=0.9
+                ))
 
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
