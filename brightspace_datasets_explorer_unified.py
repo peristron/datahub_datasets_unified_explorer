@@ -352,9 +352,13 @@ def logout():
     st.session_state['messages'] = []
 
 
+#------------------------------
 def clear_all_selections():
     """clears all dataset selections."""
     st.session_state['selected_datasets'] = []
+    # clear path finder results
+    if 'path_finder_results' in st.session_state:
+        del st.session_state['path_finder_results']
     # clear any selection-related keys
     for key in list(st.session_state.keys()):
         if key.startswith("sel_") or key == "global_search" or key == "dataset_multiselect":
