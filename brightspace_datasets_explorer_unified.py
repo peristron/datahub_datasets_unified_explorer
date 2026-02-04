@@ -769,7 +769,11 @@ def get_dataset_connectivity(df: pd.DataFrame) -> pd.DataFrame:
             'category': category
         })
 
-    return pd.DataFrame(connectivity).sort_values('total_connections', ascending=False)
+#------------------------------
+    return pd.DataFrame(connectivity).sort_values(
+        ['total_connections', 'incoming_fks'],
+        ascending=[False, False]
+    )
 
 
 def get_hub_datasets(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
