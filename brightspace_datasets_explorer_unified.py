@@ -922,25 +922,52 @@ def get_path_details(df: pd.DataFrame, path: List[str]) -> List[Dict]:
     return details
 
 
-def show_relationship_summary(df: pd.DataFrame, dataset_name: str):
-    """shows quick stats about a dataset's connectivity."""
+#------------------------------
+def show_relationship_summary(df: pd.DataFrame, dataset_name: str, show_details: bool = True):
+    """
+    shows quick stats about a dataset's connectivity.
+    optionally shows the actual connected dataset names.
+    """
     joins = get_joins(df)
 
     if joins.empty:
-        outgoing = 0
-        incoming = 0
+        outgoing_joins = pd.DataFrame()
+        incoming_joins = pd.DataFrame()
     else:
         # Outgoing: This dataset HAS the Foreign Key (it points TO others)
-        outgoing = len(joins[joins['dataset_name_fk'] == dataset_name])
+        outgoing_joins = joins[joins['dataset_name_fk'] == dataset_name]
         # Incoming: This dataset HAS the Primary Key (others point TO it)
-        incoming = len(joins[joins['dataset_name_pk'] == dataset_name])
+        incoming_joins = joins[joins['dataset_name_pk'] == dataset_name]
 
-    # vertical stacking for readability
-    st.metric("References (Outgoing)", outgoing,
-              help=f"This dataset contains {outgoing} Foreign Keys pointing to other tables.")
-    st.metric("Referenced By (Incoming)", incoming,
-              help=f"{incoming} other tables have Foreign Keys pointing to this dataset.")
-    st.metric("Total Connections", outgoing + incoming)
+    outgoing_count = len(outgoing_joins)
+    incoming_count = len(incoming_joins)
+    total = outgoing_count + incoming_count
+
+    # metrics display
+    st.metric("References (Outgoing)", outgoing_count,
+              help=f"This dataset contains {outgoing_count} Foreign Keys pointing to other tables.")
+    st.metric("Referenced By (Incoming)", incoming_count,
+              help=f"{incoming_count} other tables have Foreign Keys pointing to this dataset.")
+    st.metric("Total Connections", total)
+
+    # optional detail expansion
+    if show_details and total > 0:
+        with st.expander("🔗 View Connected Datasets", expanded=False):
+            if outgoing_count > 0:
+                st.markdown("**References (points to):**")
+                for _, row in outgoing_joins.iterrows():
+                    target = row['dataset_name_pk']
+                    key = row['column_name']
+                    st.markdown(f"- `{target}` via `{key}`")
+
+            if incoming_count > 0:
+                if outgoing_count > 0:
+                    st.markdown("---")
+                st.markdown("**Referenced by (pointed to from):**")
+                for _, row in incoming_joins.iterrows():
+                    source = row['dataset_name_fk']
+                    key = row['column_name']
+                    st.markdown(f"- `{source}` via `{key}`")
 
 # =============================================================================
 # 7. visualization engine
