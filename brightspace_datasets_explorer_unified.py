@@ -1684,10 +1684,14 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     return "\n".join(sql_lines)
 
 
+#------------------------------
 def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     """
     generates python pandas code to load and merge the selected datasets.
     """
+    # remove duplicates while preserving order
+    selected_datasets = list(dict.fromkeys(selected_datasets))
+
     if len(selected_datasets) < 2:
         return "# please select at least 2 datasets to generate code."
 
