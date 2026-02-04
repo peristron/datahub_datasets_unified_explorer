@@ -3716,6 +3716,75 @@ def render_schema_diff(df: pd.DataFrame):
     else:
         st.success("🎉 No differences detected! The schemas are identical.")
 
+#------------------------------
+def render_url_editor():
+    """renders the full-width URL editor view."""
+    st.header("✏️ URL Configuration")
+    st.markdown("Edit the list of D2L Knowledge Base URLs to scrape for dataset metadata.")
+
+    col_edit, col_help = st.columns([3, 1])
+
+    with col_help:
+        st.markdown("#### Tips")
+        st.markdown("""
+- **One URL per line**
+- URLs must start with `http`
+- Remove the top 2 URLs to exclude Advanced Data Sets
+- Add new KB article URLs as D2L releases them
+""")
+        
+        st.markdown("#### Quick Actions")
+        if st.button("🔄 Reset to Defaults", use_container_width=True):
+            st.session_state['custom_urls'] = DEFAULT_URLS
+            st.rerun()
+
+    with col_edit:
+        current_urls = st.session_state.get('custom_urls') or DEFAULT_URLS
+        
+        # Full-width text area with more height
+        edited_urls = st.text_area(
+            "URLs to Scrape (one per line)",
+            value=current_urls,
+            height=500,
+            help="Each line should contain one complete URL to a D2L Knowledge Base article."
+        )
+
+        # Validation feedback
+        lines = edited_urls.strip().split('\n')
+        valid_urls = [u.strip() for u in lines if u.strip().startswith('http')]
+        invalid_lines = [u.strip() for u in lines if u.strip() and not u.strip().startswith('http')]
+
+        col_status, col_actions = st.columns([2, 1])
+
+        with col_status:
+            st.success(f"✅ **{len(valid_urls)}** valid URLs detected")
+            if invalid_lines:
+                st.warning(f"⚠️ **{len(invalid_lines)}** invalid line(s) will be ignored")
+                with st.expander("View invalid lines"):
+                    for line in invalid_lines[:10]:
+                        st.code(line[:80] + "..." if len(line) > 80 else line)
+
+        with col_actions:
+            col_save, col_cancel = st.columns(2)
+            
+            with col_save:
+                if st.button("💾 Save & Close", type="primary", use_container_width=True):
+                    st.session_state['custom_urls'] = edited_urls
+                    st.session_state['show_url_editor'] = False
+                    st.success("URLs saved!")
+                    st.rerun()
+
+            with col_cancel:
+                if st.button("❌ Cancel", use_container_width=True):
+                    st.session_state['show_url_editor'] = False
+                    st.rerun()
+
+        # Preview section
+        with st.expander("👁️ Preview Valid URLs", expanded=False):
+            for i, url in enumerate(valid_urls, 1):
+                st.markdown(f"{i}. `{url}`")
+
+
 # =============================================================================
 # 10. UDF Flattener (EAV → wide)
 # =============================================================================
