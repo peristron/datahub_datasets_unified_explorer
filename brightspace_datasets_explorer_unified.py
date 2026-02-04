@@ -292,6 +292,7 @@ WHERE RowNum = 1 -- Keeps only the latest version
 # 3. session state management
 # =============================================================================
 
+#------------------------------
 def init_session_state():
     """initializes streamlit session state variables safely."""
     defaults = {
@@ -302,7 +303,9 @@ def init_session_state():
         'total_tokens': 0,
         'experience_mode': 'simple',  # 'simple' or 'advanced'
         'selected_datasets': [],
-        'scrape_msg': None
+        'scrape_msg': None,
+        'show_url_editor': False,
+        'custom_urls': None
     }
     for key, value in defaults.items():
         if key not in st.session_state:
