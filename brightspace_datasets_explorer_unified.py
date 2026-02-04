@@ -945,9 +945,15 @@ def show_relationship_summary(df: pd.DataFrame, dataset_name: str):
 # 7. visualization engine
 # =============================================================================
 
+#------------------------------
 def get_category_colors(categories: List[str]) -> Dict[str, str]:
-    """generates consistent colors for categories using hsl hash."""
-    return {cat: f"hsl({(hash(cat)*137.5) % 360}, 70%, 50%)" for cat in categories}
+    """generates consistent colors for categories using deterministic hash."""
+    import hashlib
+
+    def stable_hash(s: str) -> int:
+        return int(hashlib.md5(s.encode()).hexdigest(), 16)
+
+    return {cat: f"hsl({(stable_hash(cat) * 137.5) % 360}, 70%, 50%)" for cat in categories}
 
 
 def create_spring_graph(
