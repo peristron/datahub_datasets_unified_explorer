@@ -3743,7 +3743,7 @@ def render_url_editor():
         
         # Full-width text area with more height
         edited_urls = st.text_area(
-            "URLs to Scrape (one per line)",
+            "URLs to Scrape (1 per line; remove the top 2 to exclude ADSs metadata)",
             value=current_urls,
             height=500,
             help="Each line should contain one complete URL to a D2L Knowledge Base article."
