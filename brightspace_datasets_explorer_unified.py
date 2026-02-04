@@ -1508,12 +1508,16 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
 
     return "\n".join(lines)
 
+#------------------------------
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
     generates a deterministic sql join query with dialect-specific syntax.
     supported dialects: 'T-SQL', 'Snowflake', 'PostgreSQL'
     """
+    # remove duplicates while preserving order
+    selected_datasets = list(dict.fromkeys(selected_datasets))
+
     if len(selected_datasets) < 2:
         return "-- please select at least 2 datasets to generate a join."
 
