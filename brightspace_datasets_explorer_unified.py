@@ -3374,6 +3374,177 @@ def render_kpi_recipes(df: pd.DataFrame):
 
             st.divider()
 
+#------------------------------
+def render_schema_diff(df: pd.DataFrame):
+    """renders the schema diff tool to compare current schema against a backup."""
+    st.header("✨ Schema Diff")
+    st.markdown("Compare the current schema against a previous backup to identify changes.")
+
+    uploaded_file = st.file_uploader(
+        "Upload Backup CSV",
+        type="csv",
+        help="Upload a previously downloaded metadata backup CSV to compare against the current schema."
+    )
+
+    if not uploaded_file:
+        st.info("👆 Upload a backup CSV file to begin comparison.")
+
+        with st.expander("ℹ️ How to use Schema Diff", expanded=True):
+            st.markdown("""
+**Purpose:** Track how the Brightspace schema evolves over time.
+
+**Steps:**
+1. Download a backup using **💾 Download Metadata Backup** in the sidebar
+2. Later, after re-scraping or updating, upload that backup here
+3. Review which datasets/columns were added, removed, or modified
+
+**Use Cases:**
+- Identify new datasets added by D2L in product updates
+- Track columns that have been deprecated or renamed
+- Audit changes before updating ETL pipelines
+""")
+        return
+
+    try:
+        backup_df = pd.read_csv(uploaded_file).fillna('')
+    except Exception as e:
+        st.error(f"Failed to parse uploaded CSV: {e}")
+        return
+
+    # Validate backup has expected columns
+    required_cols = ['dataset_name', 'column_name']
+    missing_cols = [c for c in required_cols if c not in backup_df.columns]
+    if missing_cols:
+        st.error(f"Backup CSV is missing required columns: {', '.join(missing_cols)}")
+        return
+
+    st.success(f"✅ Loaded backup with **{backup_df['dataset_name'].nunique()}** datasets and **{len(backup_df)}** columns")
+
+    st.divider()
+
+    # Dataset-level comparison
+    current_datasets = set(df['dataset_name'].unique())
+    backup_datasets = set(backup_df['dataset_name'].unique())
+
+    added_datasets = current_datasets - backup_datasets
+    removed_datasets = backup_datasets - current_datasets
+    common_datasets = current_datasets & backup_datasets
+
+    col_summary, col_details = st.columns([1, 2])
+
+    with col_summary:
+        st.subheader("📊 Summary")
+        st.metric("Datasets in Current", len(current_datasets))
+        st.metric("Datasets in Backup", len(backup_datasets))
+        st.metric("Added", len(added_datasets), delta=f"+{len(added_datasets)}" if added_datasets else None)
+        st.metric("Removed", len(removed_datasets), delta=f"-{len(removed_datasets)}" if removed_datasets else None, delta_color="inverse")
+        st.metric("Unchanged/Modified", len(common_datasets))
+
+    with col_details:
+        st.subheader("🔍 Dataset Changes")
+
+        if added_datasets:
+            with st.expander(f"➕ Added Datasets ({len(added_datasets)})", expanded=True):
+                for ds in sorted(added_datasets):
+                    col_count = len(df[df['dataset_name'] == ds])
+                    category = df[df['dataset_name'] == ds]['category'].iloc[0] if not df[df['dataset_name'] == ds].empty else "Unknown"
+                    st.markdown(f"- **{ds}** ({category}) — {col_count} columns")
+
+        if removed_datasets:
+            with st.expander(f"➖ Removed Datasets ({len(removed_datasets)})", expanded=True):
+                for ds in sorted(removed_datasets):
+                    col_count = len(backup_df[backup_df['dataset_name'] == ds])
+                    category = backup_df[backup_df['dataset_name'] == ds]['category'].iloc[0] if not backup_df[backup_df['dataset_name'] == ds].empty else "Unknown"
+                    st.markdown(f"- **{ds}** ({category}) — {col_count} columns")
+
+        if not added_datasets and not removed_datasets:
+            st.success("No datasets were added or removed.")
+
+    st.divider()
+
+    # Column-level comparison for common datasets
+    st.subheader("📋 Column-Level Changes")
+
+    if common_datasets:
+        datasets_with_changes = []
+
+        for ds in sorted(common_datasets):
+            current_cols = set(df[df['dataset_name'] == ds]['column_name'])
+            backup_cols = set(backup_df[backup_df['dataset_name'] == ds]['column_name'])
+
+            added_cols = current_cols - backup_cols
+            removed_cols = backup_cols - current_cols
+
+            if added_cols or removed_cols:
+                datasets_with_changes.append({
+                    'dataset': ds,
+                    'added': added_cols,
+                    'removed': removed_cols
+                })
+
+        if datasets_with_changes:
+            st.warning(f"**{len(datasets_with_changes)}** dataset(s) have column changes.")
+
+            for change in datasets_with_changes:
+                with st.expander(f"📦 {change['dataset']} (+{len(change['added'])} / -{len(change['removed'])})"):
+                    c1, c2 = st.columns(2)
+
+                    with c1:
+                        if change['added']:
+                            st.markdown("**Added Columns:**")
+                            for col in sorted(change['added']):
+                                st.markdown(f"- `{col}` ➕")
+                        else:
+                            st.caption("No columns added.")
+
+                    with c2:
+                        if change['removed']:
+                            st.markdown("**Removed Columns:**")
+                            for col in sorted(change['removed']):
+                                st.markdown(f"- `{col}` ➖")
+                        else:
+                            st.caption("No columns removed.")
+        else:
+            st.success("No column-level changes detected in common datasets.")
+    else:
+        st.info("No common datasets to compare at column level.")
+
+    # Export diff report
+    st.divider()
+    st.subheader("📥 Export Diff Report")
+
+    diff_data = []
+
+    for ds in sorted(added_datasets):
+        diff_data.append({"Change Type": "Dataset Added", "Dataset": ds, "Column": "", "Category": df[df['dataset_name'] == ds]['category'].iloc[0] if not df[df['dataset_name'] == ds].empty else ""})
+
+    for ds in sorted(removed_datasets):
+        diff_data.append({"Change Type": "Dataset Removed", "Dataset": ds, "Column": "", "Category": backup_df[backup_df['dataset_name'] == ds]['category'].iloc[0] if not backup_df[backup_df['dataset_name'] == ds].empty else ""})
+
+    for ds in sorted(common_datasets):
+        current_cols = set(df[df['dataset_name'] == ds]['column_name'])
+        backup_cols = set(backup_df[backup_df['dataset_name'] == ds]['column_name'])
+
+        for col in sorted(current_cols - backup_cols):
+            diff_data.append({"Change Type": "Column Added", "Dataset": ds, "Column": col, "Category": ""})
+
+        for col in sorted(backup_cols - current_cols):
+            diff_data.append({"Change Type": "Column Removed", "Dataset": ds, "Column": col, "Category": ""})
+
+    if diff_data:
+        diff_df = pd.DataFrame(diff_data)
+        st.dataframe(diff_df, use_container_width=True, hide_index=True)
+
+        csv = diff_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Diff Report (CSV)",
+            data=csv,
+            file_name="schema_diff_report.csv",
+            mime="text/csv"
+        )
+    else:
+        st.success("🎉 No differences detected! The schemas are identical.")
+
 # =============================================================================
 # 10. UDF Flattener (EAV → wide)
 # =============================================================================
