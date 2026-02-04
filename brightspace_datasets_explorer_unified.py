@@ -3203,6 +3203,96 @@ def render_ai_assistant(df: pd.DataFrame, selected_datasets: List[str]):
                 st.error(f"AI Error: {str(e)}")
 
 
+#------------------------------
+def convert_sql_dialect(sql: str, target_dialect: str) -> str:
+    """
+    converts t-sql syntax to target dialect.
+    handles common function and syntax differences.
+    """
+    if target_dialect == "T-SQL":
+        # ensure TOP clause for T-SQL
+        if "SELECT TOP" not in sql and "SELECT" in sql:
+            sql = sql.replace("SELECT", "SELECT TOP 100", 1)
+        return sql
+
+    # for snowflake and postgresql, remove TOP and add LIMIT
+    sql = re.sub(r'SELECT\s+TOP\s+(\d+)', r'SELECT', sql, flags=re.IGNORECASE)
+    if "LIMIT" not in sql.upper():
+        sql = sql.rstrip().rstrip(';') + "\nLIMIT 100"
+
+    # common conversions for both snowflake and postgresql
+    sql = sql.replace("GETDATE()", "CURRENT_TIMESTAMP")
+    sql = sql.replace("GETUTCDATE()", "CURRENT_TIMESTAMP")
+    sql = sql.replace("ISNULL(", "COALESCE(")
+
+    # dateadd conversion: DATEADD(day, -30, GETDATE()) -> CURRENT_TIMESTAMP - INTERVAL '30 days'
+    dateadd_pattern = r"DATEADD\s*\(\s*(\w+)\s*,\s*(-?\d+)\s*,\s*([^)]+)\)"
+
+    def dateadd_replacement(match):
+        unit = match.group(1).lower()
+        value = int(match.group(2))
+        base_expr = match.group(3).strip()
+
+        # normalize the base expression
+        if base_expr.upper() in ("GETDATE()", "CURRENT_TIMESTAMP"):
+            base_expr = "CURRENT_TIMESTAMP"
+
+        # handle negative values
+        if value < 0:
+            operator = "-"
+            value = abs(value)
+        else:
+            operator = "+"
+
+        # pluralize unit if needed
+        unit_map = {
+            "day": "days",
+            "month": "months",
+            "year": "years",
+            "hour": "hours",
+            "minute": "minutes",
+            "second": "seconds",
+            "week": "weeks"
+        }
+        unit_plural = unit_map.get(unit, f"{unit}s")
+
+        return f"({base_expr} {operator} INTERVAL '{value} {unit_plural}')"
+
+    sql = re.sub(dateadd_pattern, dateadd_replacement, sql, flags=re.IGNORECASE)
+
+    # datediff conversion: DATEDIFF(day, start, end) -> (end::date - start::date) for postgres
+    # or DATEDIFF('day', start, end) for snowflake
+    if target_dialect == "PostgreSQL":
+        datediff_pattern = r"DATEDIFF\s*\(\s*(\w+)\s*,\s*([^,]+)\s*,\s*([^)]+)\)"
+
+        def datediff_replacement(match):
+            unit = match.group(1).lower()
+            start_expr = match.group(2).strip()
+            end_expr = match.group(3).strip()
+
+            if unit == "day":
+                return f"(({end_expr})::date - ({start_expr})::date)"
+            else:
+                return f"EXTRACT({unit.upper()} FROM ({end_expr}) - ({start_expr}))"
+
+        sql = re.sub(datediff_pattern, datediff_replacement, sql, flags=re.IGNORECASE)
+
+        # convert CONVERT(type, expr) to expr::type
+        convert_pattern = r"CONVERT\s*\(\s*(\w+)\s*,\s*([^)]+)\)"
+        sql = re.sub(convert_pattern, r"(\2)::\1", sql, flags=re.IGNORECASE)
+
+    elif target_dialect == "Snowflake":
+        # snowflake uses quoted unit in datediff
+        datediff_pattern = r"DATEDIFF\s*\(\s*(\w+)\s*,"
+        sql = re.sub(datediff_pattern, r"DATEDIFF('\1',", sql, flags=re.IGNORECASE)
+
+        # convert CONVERT to TRY_CAST for snowflake
+        convert_pattern = r"CONVERT\s*\(\s*(\w+)\s*,\s*([^)]+)\)"
+        sql = re.sub(convert_pattern, r"TRY_CAST(\2 AS \1)", sql, flags=re.IGNORECASE)
+
+    return sql
+
+
 def render_kpi_recipes(df: pd.DataFrame):
     """renders the cookbook of sql recipes."""
     st.header("📚 KPI Recipes")
@@ -3236,26 +3326,22 @@ def render_kpi_recipes(df: pd.DataFrame):
                     label_visibility="collapsed"
                 )
 
-            sql = recipe["sql_template"].strip()
-
-            if dialect == "T-SQL":
-                if "SELECT TOP" not in sql and "SELECT" in sql:
-                    sql = sql.replace("SELECT", "SELECT TOP 100", 1)
-            elif dialect in ["Snowflake", "PostgreSQL"]:
-                sql = sql.replace("SELECT TOP 100", "SELECT")
-                if "LIMIT" not in sql:
-                    sql += "\nLIMIT 100"
-                if dialect == "PostgreSQL":
-                    sql = sql.replace("GETDATE()", "NOW()").replace("DATEADD", "AGE")
+            sql = convert_sql_dialect(recipe["sql_template"].strip(), dialect)
 
             with st.expander("👨‍🍳 View SQL Recipe", expanded=False):
                 st.code(sql, language="sql")
-                st.download_button(
-                    label="📥 Download SQL",
-                    data=sql,
-                    file_name=f"recipe_{recipe['title'].lower().replace(' ', '_')}.sql",
-                    mime="application/sql"
-                )
+
+                col_dl, col_note = st.columns([1, 2])
+                with col_dl:
+                    st.download_button(
+                        label="📥 Download SQL",
+                        data=sql,
+                        file_name=f"recipe_{recipe['title'].lower().replace(' ', '_')}_{dialect.lower()}.sql",
+                        mime="application/sql"
+                    )
+                with col_note:
+                    if dialect != "T-SQL":
+                        st.caption(f"⚠️ Converted from T-SQL to {dialect}. Verify syntax before use.")
 
             st.divider()
 
