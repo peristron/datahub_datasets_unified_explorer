@@ -314,9 +314,14 @@ init_session_state()
 # 4. authentication logic
 # =============================================================================
 
+#------------------------------
 def get_secret(key_name: str) -> Optional[str]:
-    """retrieves a secret, checking both lowercase and uppercase variations."""
-    return st.secrets.get(key_name) or st.secrets.get(key_name.upper())
+    """retrieves a secret, checking as-provided, lowercase, and uppercase variations."""
+    return (
+        st.secrets.get(key_name) or
+        st.secrets.get(key_name.lower()) or
+        st.secrets.get(key_name.upper())
+    )
 
 
 def perform_login():
