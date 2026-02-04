@@ -3164,6 +3164,7 @@ def render_kpi_recipes(df: pd.DataFrame):
 # 10. UDF Flattener (EAV → wide)
 # =============================================================================
 
+#------------------------------
 def render_udf_flattener(df: pd.DataFrame):
     """renders the EAV pivot tool for user defined fields."""
     st.header("🔧 UDF Flattener")
@@ -3205,7 +3206,7 @@ def render_udf_flattener(df: pd.DataFrame):
     # 1. Table selection
     st.subheader("1. Configuration")
 
-    col_main, col_eav = st.columns(2)
+    col_main, col_eav, col_dialect = st.columns(3)
     all_ds = sorted(df['dataset_name'].unique())
 
     def_main = "Users" if "Users" in all_ds else (all_ds[0] if all_ds else "")
@@ -3225,6 +3226,16 @@ def render_udf_flattener(df: pd.DataFrame):
             all_ds,
             index=all_ds.index(def_eav) if def_eav in all_ds else 0
         )
+    with col_dialect:
+        dialect = st.selectbox(
+            "SQL Dialect",
+            ["T-SQL", "Snowflake", "PostgreSQL"],
+            help="Adjusts identifier quoting and syntax."
+        )
+
+    # Warn if same table selected
+    if main_table == eav_table:
+        st.warning("⚠️ Main table and Attribute table are the same. This is unusual for EAV patterns.")
 
     # 2. Column mapping
     st.subheader("2. Column Mapping")
@@ -3297,30 +3308,65 @@ def render_udf_flattener(df: pd.DataFrame):
         else:
             fields = [f.strip() for f in raw_fields.split(',') if f.strip()]
 
-            lines = ["SELECT"]
-            lines.append(f"    m.{join_key},")
+            # Validate integer input if IDs selected
+            if input_type == "IDs (Integers)":
+                invalid_fields = [f for f in fields if not f.isdigit()]
+                if invalid_fields:
+                    st.error(f"Invalid Field IDs (expected integers): {', '.join(invalid_fields)}")
+                    return
+
+            # Configure dialect-specific quoting
+            if dialect == "T-SQL":
+                q_start, q_end = "[", "]"
+            else:
+                q_start, q_end = '"', '"'
+
+            def quote(name: str) -> str:
+                return f"{q_start}{name}{q_end}"
+
+            # Build the SQL
+            lines = [
+                f"-- UDF Flattener: Pivot {eav_table} into {main_table}",
+                f"-- Dialect: {dialect}",
+                f"-- Fields: {', '.join(fields)}",
+                "",
+                "SELECT"
+            ]
+            lines.append(f"    m.{quote(join_key)},")
 
             for i, f in enumerate(fields):
                 comma = "," if i < len(fields) - 1 else ""
 
                 if input_type == "IDs (Integers)":
-                    match_logic = f"{pivot_col} = {f}"
+                    match_logic = f"{quote(pivot_col)} = {f}"
                     alias = f"Field_{f}"
                 else:
                     safe_f = f.replace("'", "''")
-                    match_logic = f"{pivot_col} = '{safe_f}'"
+                    match_logic = f"{quote(pivot_col)} = '{safe_f}'"
                     alias = f.replace(' ', '_').replace("'", "")
 
                 lines.append(
-                    f"    MAX(CASE WHEN e.{match_logic} THEN e.{val_col} END) AS {alias}{comma}"
+                    f"    MAX(CASE WHEN e.{match_logic} THEN e.{quote(val_col)} END) AS {quote(alias)}{comma}"
                 )
 
-            lines.append(f"FROM {main_table} m")
-            lines.append(f"LEFT JOIN {eav_table} e ON m.{join_key} = e.{join_key}")
-            lines.append(f"GROUP BY m.{join_key}")
+            lines.append(f"FROM {quote(main_table)} m")
+            lines.append(f"LEFT JOIN {quote(eav_table)} e ON m.{quote(join_key)} = e.{quote(join_key)}")
+            lines.append(f"GROUP BY m.{quote(join_key)}")
 
-            st.code("\n".join(lines), language="sql")
-            st.caption("Copy this SQL to query your database.")
+            sql_output = "\n".join(lines)
+
+            st.code(sql_output, language="sql")
+
+            col_dl, col_info = st.columns([1, 2])
+            with col_dl:
+                st.download_button(
+                    label="📥 Download SQL",
+                    data=sql_output,
+                    file_name=f"udf_pivot_{dialect.lower()}.sql",
+                    mime="application/sql"
+                )
+            with col_info:
+                st.caption(f"Generated {dialect} syntax. Copy this SQL to query your database.")
 
 # =============================================================================
 # 11. main orchestrator
