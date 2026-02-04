@@ -1436,16 +1436,20 @@ def create_relationship_matrix(df: pd.DataFrame, filter_connected_only: bool = T
         plot_bgcolor='#1e1e1e',
         paper_bgcolor='#1e1e1e',
         xaxis=dict(
-            title="Target Dataset (has Primary Key)",
+            title=dict(
+                text="Target Dataset (has Primary Key)",
+                font=dict(color='#8B949E')
+            ),
             tickangle=45,
             tickfont=dict(color='#C9D1D9', size=10),
-            titlefont=dict(color='#8B949E'),
             showgrid=False
         ),
         yaxis=dict(
-            title="Source Dataset (has Foreign Key)",
+            title=dict(
+                text="Source Dataset (has Foreign Key)",
+                font=dict(color='#8B949E')
+            ),
             tickfont=dict(color='#C9D1D9', size=10),
-            titlefont=dict(color='#8B949E'),
             showgrid=False,
             autorange='reversed'
         ),
