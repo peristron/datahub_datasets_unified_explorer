@@ -1740,9 +1740,15 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     if len(selected_datasets) < 2:
         return "# please select at least 2 datasets to generate code."
 
+#------------------------------
     # helper to clean names for python variables (User Logins -> df_user_logins)
     def clean_var(name):
-        return f"df_{name.lower().replace(' ', '_')}"
+        # remove or replace characters that are invalid in Python identifiers
+        clean = name.lower()
+        clean = re.sub(r'[^a-z0-9_]', '_', clean)  # replace non-alphanumeric with underscore
+        clean = re.sub(r'_+', '_', clean)  # collapse multiple underscores
+        clean = clean.strip('_')  # remove leading/trailing underscores
+        return f"df_{clean}"
 
     # build connection graph
     G_full = nx.Graph()
