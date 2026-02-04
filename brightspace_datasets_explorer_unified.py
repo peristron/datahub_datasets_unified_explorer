@@ -1346,27 +1346,110 @@ def get_orbital_map(df: pd.DataFrame, target_node: str = None,
     return create_orbital_map(df_hash, df, target_node, safe_keys)
 
 
-def create_relationship_matrix(df: pd.DataFrame) -> go.Figure:
-    """creates a heatmap showing which datasets connect to which."""
+#------------------------------
+def create_relationship_matrix(df: pd.DataFrame, filter_connected_only: bool = True) -> go.Figure:
+    """
+    creates a heatmap showing which datasets connect to which.
+    optionally filters to only show datasets with at least one connection.
+    """
     joins = get_joins(df)
-    datasets = sorted(df['dataset_name'].unique())
+
+    if joins.empty:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No relationships detected in schema",
+            showarrow=False,
+            font=dict(size=16, color='gray')
+        )
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='#1e1e1e',
+            paper_bgcolor='#1e1e1e'
+        )
+        return fig
+
+    # determine which datasets to include
+    if filter_connected_only:
+        connected_datasets = set(joins['dataset_name_fk']).union(set(joins['dataset_name_pk']))
+        datasets = sorted(connected_datasets)
+    else:
+        datasets = sorted(df['dataset_name'].unique())
 
     # create adjacency matrix
     matrix = pd.DataFrame(0, index=datasets, columns=datasets)
 
-    if not joins.empty:
-        for _, r in joins.iterrows():
-            src = r['dataset_name_fk']
-            tgt = r['dataset_name_pk']
-            if src in matrix.index and tgt in matrix.columns:
-                matrix.loc[src, tgt] += 1
+    # track join keys for hover text
+    join_keys = pd.DataFrame("", index=datasets, columns=datasets)
 
-    fig = px.imshow(
-        matrix,
-        labels=dict(x="Target (PK)", y="Source (FK)", color="Connections"),
-        color_continuous_scale="Blues"
+    for _, r in joins.iterrows():
+        src = r['dataset_name_fk']
+        tgt = r['dataset_name_pk']
+        key = r['column_name']
+        if src in matrix.index and tgt in matrix.columns:
+            matrix.loc[src, tgt] += 1
+            existing = join_keys.loc[src, tgt]
+            if existing:
+                join_keys.loc[src, tgt] = f"{existing}, {key}"
+            else:
+                join_keys.loc[src, tgt] = key
+
+    # build custom hover text
+    hover_text = []
+    for src in datasets:
+        row_hover = []
+        for tgt in datasets:
+            count = matrix.loc[src, tgt]
+            keys = join_keys.loc[src, tgt]
+            if count > 0:
+                row_hover.append(f"<b>{src}</b> → <b>{tgt}</b><br>Joins: {count}<br>Keys: {keys}")
+            else:
+                row_hover.append(f"{src} → {tgt}<br>No direct relationship")
+        hover_text.append(row_hover)
+
+    # create heatmap with custom hover
+    fig = go.Figure(data=go.Heatmap(
+        z=matrix.values,
+        x=datasets,
+        y=datasets,
+        hoverinfo='text',
+        text=hover_text,
+        colorscale=[
+            [0.0, '#1e1e1e'],
+            [0.01, '#1e3a5f'],
+            [0.5, '#3182bd'],
+            [1.0, '#08519c']
+        ],
+        showscale=True,
+        colorbar=dict(
+            title="Joins",
+            titleside="right",
+            tickfont=dict(color='white'),
+            titlefont=dict(color='white')
+        )
+    ))
+
+    # style the layout
+    fig.update_layout(
+        height=max(500, len(datasets) * 20),
+        plot_bgcolor='#1e1e1e',
+        paper_bgcolor='#1e1e1e',
+        xaxis=dict(
+            title="Target Dataset (has Primary Key)",
+            tickangle=45,
+            tickfont=dict(color='#C9D1D9', size=10),
+            titlefont=dict(color='#8B949E'),
+            showgrid=False
+        ),
+        yaxis=dict(
+            title="Source Dataset (has Foreign Key)",
+            tickfont=dict(color='#C9D1D9', size=10),
+            titlefont=dict(color='#8B949E'),
+            showgrid=False,
+            autorange='reversed'
+        ),
+        margin=dict(l=150, r=50, t=50, b=150)
     )
-    fig.update_layout(height=600)
+
     return fig
 
 # =============================================================================
