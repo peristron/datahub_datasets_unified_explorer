@@ -2949,6 +2949,7 @@ def render_schema_browser(df: pd.DataFrame):
                     height=400
                 )
 
+#------------------------------
                 col_pk, col_fk = st.columns(2)
 
                 with col_pk:
@@ -2962,6 +2963,33 @@ def render_schema_browser(df: pd.DataFrame):
                         fks = subset[subset['is_foreign_key']]['column_name'].tolist()
                         if fks:
                             st.markdown(f"🔗 **Foreign Keys:** {', '.join(fks)}")
+
+                # DDL Export
+                with st.expander("🏗️ Export as DDL (CREATE TABLE)", expanded=False):
+                    ddl_dialect = st.radio(
+                        "Dialect:",
+                        ["T-SQL", "Snowflake", "PostgreSQL"],
+                        horizontal=True,
+                        key=f"ddl_dialect_{selected_ds}"
+                    )
+                    
+                    ddl_code = generate_ddl(df, selected_ds, ddl_dialect)
+                    st.code(ddl_code, language="sql")
+                    
+                    col_ddl_dl, col_ddl_info = st.columns([1, 2])
+                    with col_ddl_dl:
+                        st.download_button(
+                            label="📥 Download DDL",
+                            data=ddl_code,
+                            file_name=f"{selected_ds.replace(' ', '_').lower()}_ddl_{ddl_dialect.lower()}.sql",
+                            mime="application/sql",
+                            key=f"ddl_download_{selected_ds}"
+                        )
+                    with col_ddl_info:
+                        st.caption(
+                            "⚠️ Review data types before use. D2L types are mapped to common SQL equivalents "
+                            "but may need adjustment for your specific database."
+                        )
 
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
