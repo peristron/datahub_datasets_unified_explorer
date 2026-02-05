@@ -424,8 +424,9 @@ def clean_description(text: str) -> str:
         text = text[0].upper() + text[1:]
 
     # 5. Limit to the first 2 complete sentences for brevity
+#------------------------------
     sentences = re.split(r'(?<=[.!?]) +', text)
-    summary = ' '.join(sentences[:2])
+    summary = ' '.join(sentences[:2]).rstrip('.,!?')  # Strip trailing punctuation if incomplete
 
     # 6. Ensure summary ends with proper punctuation (avoid trailing fragments)
     if summary and summary[-1] not in '.!?':
