@@ -168,9 +168,11 @@ ENUM_DEFINITIONS = {
         1: "Numeric", 2: "Pass/Fail", 3: "Selectbox", 4: "Text",
         6: "Calculated", 7: "Formula"
     },
+#------------------------------
     "OrgUnitTypeId": {
         1: "Organization", 2: "Course Offering", 3: "Course Template",
-        4: "Department", 5: "Semester", 6: "Group", 7: "Section"
+        4: "Department", 5: "Semester", 6: "Group", 7: "Section",
+        8: "Program", 9: "Faculty"  # Common additional OrgUnit types in D2L
     },
     "SessionType": {
         1: "Instructor", 2: "Student", 3: "Admin", 4: "Impersonated"
