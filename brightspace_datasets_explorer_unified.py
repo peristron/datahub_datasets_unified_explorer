@@ -161,6 +161,7 @@ PRICING_REGISTRY = {
     "gpt-4.1-mini": {"in": 0.40, "out": 1.60,  "provider": "OpenAI"},
 }
 
+#------------------------------
 # common d2l enumeration mappings (the "decoder ring")
 ENUM_DEFINITIONS = {
     "GradeObjectTypeId": {
@@ -182,6 +183,25 @@ ENUM_DEFINITIONS = {
     },
     "OutcomeType": {
         1: "General", 2: "Specific", 3: "Program"
+    },
+    "CompletionStatus": {
+        0: "Unknown", 1: "Incomplete", 2: "Complete"
+    },
+    "ContentTypeId": {
+        1: "Module", 2: "Topic", 3: "Link", 4: "File"
+    },
+    "QuizAttemptStatus": {
+        0: "In Progress", 1: "Submitted", 2: "Graded"
+    },
+    "AssignmentSubmissionType": {
+        1: "File", 2: "Text", 3: "On Paper", 4: "Observed in Person"
+    },
+    "EnrollmentRoleId": {
+        110: "Learner", 111: "Instructor", 112: "TA",
+        113: "Course Builder", 114: "Auditor"
+    },
+    "DiscussionPostType": {
+        1: "Thread Starter", 2: "Reply"
     }
 }
 
