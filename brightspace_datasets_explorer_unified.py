@@ -1587,9 +1587,15 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     if len(path) < 2:
         return "# need at least 2 tables in the path to generate a JOIN."
 
-    # Helper to clean names for python variables (User Logins -> df_user_logins)
+#------------------------------
+    # helper to clean names for python variables (User Logins -> df_user_logins)
     def clean_var(name: str) -> str:
-        return f"df_{name.lower().replace(' ', '_')}"
+        # remove or replace characters that are invalid in Python identifiers
+        clean = name.lower()
+        clean = re.sub(r'[^a-z0-9_]', '_', clean)  # replace non-alphanumeric with underscore
+        clean = re.sub(r'_+', '_', clean)  # collapse multiple underscores
+        clean = clean.strip('_')  # remove leading/trailing underscores
+        return f"df_{clean}"
 
     # Build connection graph from global joins
     G_full = nx.Graph()
