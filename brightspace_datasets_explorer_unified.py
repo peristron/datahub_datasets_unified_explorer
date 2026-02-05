@@ -2861,9 +2861,13 @@ def render_schema_browser(df: pd.DataFrame):
         search = st.text_input("Find Column", placeholder="e.g. OrgUnitId, UserId...")
 
 #------------------------------
+#------------------------------
         if search:
             escaped_search = re.escape(search)
-            hits = df[df['column_name'].str.contains(escaped_search, case=False, na=False, regex=True)]
+            hits = df[
+                df['column_name'].str.contains(escaped_search, case=False, na=False, regex=True) |
+                df['description'].str.contains(escaped_search, case=False, na=False, regex=True)
+            ]
             if not hits.empty:
                 st.success(f"Found in **{hits['dataset_name'].nunique()}** datasets")
 
