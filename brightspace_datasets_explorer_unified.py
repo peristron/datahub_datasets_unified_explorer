@@ -3400,6 +3400,114 @@ def convert_sql_dialect(sql: str, target_dialect: str) -> str:
 
     return sql
 
+#------------------------------
+def generate_ddl(df: pd.DataFrame, dataset_name: str, dialect: str = "T-SQL") -> str:
+    """
+    generates a CREATE TABLE statement for a dataset based on its schema.
+    maps d2l data types to sql types as best as possible.
+    """
+    subset = df[df['dataset_name'] == dataset_name]
+    if subset.empty:
+        return f"-- No schema found for {dataset_name}"
+
+    # dialect-specific quoting
+    if dialect == "T-SQL":
+        q_start, q_end = "[", "]"
+    else:
+        q_start, q_end = '"', '"'
+
+    def quote(name: str) -> str:
+        return f"{q_start}{name}{q_end}"
+
+    # clean table name for SQL
+    table_name = dataset_name.replace(' ', '_').replace('-', '_')
+
+    # map D2L types to SQL types
+    type_map = {
+        # common mappings
+        'int': 'INT',
+        'bigint': 'BIGINT',
+        'smallint': 'SMALLINT',
+        'bit': 'BIT' if dialect == "T-SQL" else 'BOOLEAN',
+        'float': 'FLOAT',
+        'decimal': 'DECIMAL(18,4)',
+        'numeric': 'DECIMAL(18,4)',
+        'datetime': 'DATETIME' if dialect == "T-SQL" else 'TIMESTAMP',
+        'datetime2': 'DATETIME2' if dialect == "T-SQL" else 'TIMESTAMP',
+        'date': 'DATE',
+        'time': 'TIME',
+        'nvarchar': 'NVARCHAR(MAX)' if dialect == "T-SQL" else 'TEXT',
+        'varchar': 'VARCHAR(MAX)' if dialect == "T-SQL" else 'TEXT',
+        'text': 'TEXT',
+        'ntext': 'NTEXT' if dialect == "T-SQL" else 'TEXT',
+        'uniqueidentifier': 'UNIQUEIDENTIFIER' if dialect == "T-SQL" else 'UUID',
+        'guid': 'UNIQUEIDENTIFIER' if dialect == "T-SQL" else 'UUID',
+        'boolean': 'BIT' if dialect == "T-SQL" else 'BOOLEAN',
+        'bool': 'BIT' if dialect == "T-SQL" else 'BOOLEAN',
+    }
+
+    def map_type(d2l_type: str) -> str:
+        if not d2l_type:
+            return 'VARCHAR(255)' if dialect == "T-SQL" else 'TEXT'
+        
+        d2l_lower = d2l_type.lower().strip()
+        
+        # check for exact match first
+        if d2l_lower in type_map:
+            return type_map[d2l_lower]
+        
+        # check for partial matches
+        for key, val in type_map.items():
+            if key in d2l_lower:
+                return val
+        
+        # default fallback
+        return 'VARCHAR(255)' if dialect == "T-SQL" else 'TEXT'
+
+    # build column definitions
+    columns = []
+    pk_columns = []
+    
+    for _, row in subset.iterrows():
+        col_name = row['column_name']
+        data_type = row.get('data_type', '')
+        is_pk = row.get('is_primary_key', False)
+        is_nullable = row.get('is_nullable', '')
+        
+        sql_type = map_type(data_type)
+        
+        # determine nullability
+        if is_pk:
+            null_clause = "NOT NULL"
+            pk_columns.append(col_name)
+        elif 'no' in str(is_nullable).lower() or 'false' in str(is_nullable).lower():
+            null_clause = "NOT NULL"
+        else:
+            null_clause = "NULL"
+        
+        columns.append(f"    {quote(col_name)} {sql_type} {null_clause}")
+
+    # build the statement
+    lines = [f"CREATE TABLE {quote(table_name)} ("]
+    lines.append(",\n".join(columns))
+    
+    # add primary key constraint if applicable
+    if pk_columns:
+        pk_cols = ", ".join([quote(c) for c in pk_columns])
+        lines.append(f",\n    CONSTRAINT PK_{table_name} PRIMARY KEY ({pk_cols})")
+    
+    lines.append(");")
+    
+    # add header comment
+    header = [
+        f"-- DDL for {dataset_name}",
+        f"-- Dialect: {dialect}",
+        f"-- Generated from Brightspace Dataset Explorer",
+        f"-- Columns: {len(subset)}",
+        ""
+    ]
+    
+    return "\n".join(header) + "\n".join(lines)
 
 def render_kpi_recipes(df: pd.DataFrame):
     """renders the cookbook of sql recipes."""
