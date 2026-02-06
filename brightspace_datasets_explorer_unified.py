@@ -649,12 +649,13 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
 
 
 #------------------------------
+#------------------------------
 @st.cache_data
 def load_data() -> pd.DataFrame:
     """loads the csv from disk if it exists and is valid."""
     if os.path.exists('dataset_metadata.csv') and os.path.getsize('dataset_metadata.csv') > 10:
         try:
-            return pd.read_csv('dataset_metadata.csv').fillna('')
+            return pd.read_csv('dataset_metadata.csv', encoding='utf-8').fillna('')
         except Exception as e:
             logger.error(f"Failed to load metadata CSV: {e}")
             return pd.DataFrame()
