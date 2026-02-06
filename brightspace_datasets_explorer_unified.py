@@ -3056,7 +3056,26 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
 
         if quick_select:
             selected_datasets = quick_select
-
+#------------------------------
+                # Suggest Related Datasets Button
+                if st.button("🤖 Suggest Related Datasets", help="AI-powered recommendations based on joins"):
+                    if not selected_datasets:
+                        st.warning("Select at least one dataset first.")
+                    else:
+                        with st.spinner("Analyzing connections..."):
+                            joins = get_joins_for_selection(df, selected_datasets)
+                            if not joins.empty:
+                                related = set(joins['Target Dataset']) - set(selected_datasets)
+                                suggestions = sorted(list(related))[:3]  # Top 3 by alpha for simplicity
+                                if suggestions:
+                                    st.success(f"Try adding: {', '.join(suggestions)}")
+                                    # Auto-add to selection (optional; comment out if unwanted)
+                                    st.session_state['selected_datasets'] = list(set(selected_datasets + suggestions))
+                                    st.rerun()
+                                else:
+                                    st.info("No direct connections found for suggestions.")
+                            else:
+                                st.info("No joins detected for these datasets.")
     if selected_datasets:
         if len(selected_datasets) < 2:
             st.warning("Select at least 2 datasets to generate a JOIN.")
