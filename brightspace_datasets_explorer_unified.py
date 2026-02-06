@@ -2978,6 +2978,15 @@ def render_schema_browser(df: pd.DataFrame):
                     hide_index=True,
                     height=400
                 )
+                # Quick Export Button for this Dataset's Schema
+                schema_csv = subset[available_cols].to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Export Schema CSV",
+                    data=schema_csv,
+                    file_name=f"{selected_ds.lower().replace(' ', '_')}_schema.csv",
+                    mime="text/csv",
+                    help="Download this dataset's columns as CSV for offline use."
+                )
 
 #------------------------------
                 col_pk, col_fk = st.columns(2)
