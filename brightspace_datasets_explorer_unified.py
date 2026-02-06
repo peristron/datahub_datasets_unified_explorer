@@ -2748,6 +2748,15 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                             "Target Category": "Parent Category"
                         }
                     )
+                    # Export Joins as CSV
+                    joins_csv = join_data.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Export Joins CSV",
+                        data=joins_csv,
+                        file_name="brightspace_joins.csv",
+                        mime="text/csv",
+                        help="Download the relationships table as CSV."
+                    )
             elif mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("📋 View Relationships Table"):
                     st.info("No direct joins found between these specific datasets.")
