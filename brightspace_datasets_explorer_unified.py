@@ -2567,8 +2567,20 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             col_c1, col_c2, col_c3, col_c4 = st.columns(4)
             with col_c1:
                 graph_height = st.slider("Graph Height", 400, 1200, 600)
+#------------------------------
             with col_c2:
                 show_edge_labels = st.checkbox("Show Join Labels", True)
+                validate_joins = st.checkbox("Validate Joins", False, help="Check selection for connectivity issues.")
+
+            # Joins Validation Logic
+            if validate_joins and selected_datasets:
+                joins = get_joins_for_selection(df, selected_datasets)
+                if joins.empty:
+                    st.warning("⚠️ No joins detected in selection. Consider adding bridges like 'Users' or 'Organizational Units'.")
+                else:
+                    isolated = [ds for ds in selected_datasets if ds not in joins['Source Dataset'].unique() and ds not in joins['Target Dataset'].unique()]
+                    if isolated:
+                        st.warning(f"⚠️ Isolated datasets: {', '.join(isolated)}. They lack connections—review relationships.")
 
             if is_advanced:
                 with col_c3:
