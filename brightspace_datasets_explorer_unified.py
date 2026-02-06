@@ -2079,13 +2079,14 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             unsafe_allow_html=True
         )
 
+#------------------------------
         if st.session_state['authenticated']:
             st.success("🔓 AI Unlocked")
             if st.button("Logout"):
                 logout()
                 st.rerun()
         else:
-            with st.expander("🔐 AI Login", expanded=False):
+            with st.expander("🔐 AI Login", expanded=True):  # Default to expanded for better UX on first load
                 with st.form("login_form"):
                     st.text_input(
                         "Password",
