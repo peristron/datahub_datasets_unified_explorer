@@ -2313,6 +2313,7 @@ that almost every other table links to.
 
         with col_orphans:
             st.subheader("🏝️ Orphan Datasets")
+#------------------------------
             orphans = get_orphan_datasets(df)
             if orphans:
                 st.warning(f"{len(orphans)} datasets have no detected relationships")
@@ -2322,6 +2323,7 @@ that almost every other table links to.
                     df[df['dataset_name'].isin(orphans)]
                     [['dataset_name', 'category', 'dataset_description']]
                     .drop_duplicates('dataset_name')
+                    .sort_values('dataset_name')  # Sort alphabetically for consistent display
                     .rename(columns={'dataset_description': 'description'})
                 )
 
