@@ -1742,8 +1742,11 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
-    generates a deterministic sql join query with dialect-specific syntax.
-    Supports Composite Keys AND Sibling Joins (inferring shared dimensions like UserId).
+    generates a deterministic sql join query.
+    Features:
+    1. Parent-Child Joins (from Graph)
+    2. Sibling Joins (Shared Dimensions)
+    3. Alias Resolution (e.g. SubmitterId -> UserId)
     """
     # remove duplicates while preserving order
     selected_datasets = list(dict.fromkeys(selected_datasets))
@@ -1765,7 +1768,7 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     def quote(name):
         return f"{q_start}{name}{q_end}"
 
-    # build the full connection graph (Parent-Child relationships)
+    # build the full connection graph
     G_full = nx.Graph()
     joins = get_joins(df)
 
@@ -1782,64 +1785,107 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     base_table = selected_datasets[0]
     aliases = {ds: f"t{i+1}" for i, ds in enumerate(selected_datasets)}
 
-    # SELECT clause
-    select_part = f"SELECT {limit_syntax}" if limit_syntax else "SELECT"
-    sql_lines = [f"{select_part}", f"    {aliases[base_table]}.*"]
-
-    # FROM clause
+    sql_lines = [
+        f"SELECT {limit_syntax}" if limit_syntax else "SELECT", 
+        f"    {aliases[base_table]}.*"
+    ]
     sql_lines.append(f"FROM {quote(base_table)} {aliases[base_table]}")
 
     joined_tables = {base_table}
     remaining_tables = selected_datasets[1:]
     
-    # Universal Keys that should ALWAYS be included in a join if shared (Sibling Logic)
+    # Sibling Logic Configuration
     UNIVERSAL_KEYS = ['UserId', 'OrgUnitId', 'SectionId', 'SemesterId', 'DepartmentId', 'SessionId']
+    
+    # Map varying column names to their Universal Canonical Name
+    # This ensures 'SubmitterId' matches 'UserId'
+    ALIAS_MAP = {
+        'SubmitterId': 'UserId',
+        'GradedByUserId': 'UserId',
+        'AssignedToUserId': 'UserId',
+        'EvaluatorId': 'UserId',
+        'AuditorId': 'UserId',
+        'LastModifiedBy': 'UserId',
+        'CourseOfferingId': 'OrgUnitId',
+        'SectionId': 'OrgUnitId',
+        'ParentOrgUnitId': 'OrgUnitId'
+    }
 
     # join strategy
     for current_table in remaining_tables:
         found_connection = False
         best_join = None
 
-        # Helper to get columns for a table
-        curr_cols = set(df[df['dataset_name'] == current_table]['column_name'])
+        # Get raw columns
+        curr_cols_raw = set(df[df['dataset_name'] == current_table]['column_name'])
+        
+        # Create a "Resolved" set of columns (Canonical Names) for Sibling Check
+        # e.g. If table has 'SubmitterId', we add 'UserId' to this set
+        curr_cols_resolved = set()
+        col_lookup_curr = {} # Map Canonical -> Actual (UserId -> SubmitterId)
+        
+        for c in curr_cols_raw:
+            curr_cols_resolved.add(c)
+            col_lookup_curr[c] = c
+            if c in ALIAS_MAP:
+                canonical = ALIAS_MAP[c]
+                curr_cols_resolved.add(canonical)
+                # We prefer the Alias if it exists, or keep original?
+                # Actually we need to know WHICH column maps to UserId.
+                if canonical not in col_lookup_curr: 
+                     col_lookup_curr[canonical] = c
 
         for existing_table in joined_tables:
-            exist_cols = set(df[df['dataset_name'] == existing_table]['column_name'])
+            exist_cols_raw = set(df[df['dataset_name'] == existing_table]['column_name'])
             
-            # 1. Check for Explicit Parent-Child Edge in Graph
+            # Resolve existing table cols
+            exist_cols_resolved = set()
+            col_lookup_exist = {}
+            for c in exist_cols_raw:
+                exist_cols_resolved.add(c)
+                col_lookup_exist[c] = c
+                if c in ALIAS_MAP:
+                    canonical = ALIAS_MAP[c]
+                    exist_cols_resolved.add(canonical)
+                    if canonical not in col_lookup_exist:
+                        col_lookup_exist[canonical] = c
+
+            # 1. Graph Keys (Explicit Parent-Child)
             graph_keys = []
             if G_full.has_edge(current_table, existing_table):
                 graph_keys = G_full[current_table][existing_table]['keys']
             
-            # 2. Check for Implicit Sibling Dimensions (Universal Keys)
-            # Find which universal keys exist in BOTH tables
-            shared_universal = [k for k in UNIVERSAL_KEYS if k in curr_cols and k in exist_cols]
+            # 2. Shared Universal Keys (Sibling)
+            # Check intersection of RESOLVED sets
+            shared_universal = [k for k in UNIVERSAL_KEYS if k in curr_cols_resolved and k in exist_cols_resolved]
             
-            # 3. Merge Keys
-            # We prefer Graph Keys, but we MUST augment with Shared Universal Keys to prevent cartesian products.
-            # e.g. If Graph says "OrgUnitId", but both also have "UserId", we add "UserId".
+            # 3. Merge
             final_keys = sorted(list(set(graph_keys + shared_universal)))
             
             if final_keys:
-                # Build ON clause
                 conditions = []
                 for k in final_keys:
-                    cond = f"{aliases[existing_table]}.{quote(k)} = {aliases[current_table]}.{quote(k)}"
+                    # Get the ACTUAL column names for this key
+                    # If 'k' is 'UserId', lookup might return 'SubmitterId' for current_table
+                    left_col = col_lookup_exist.get(k, k)
+                    right_col = col_lookup_curr.get(k, k)
+                    
+                    cond = f"{aliases[existing_table]}.{quote(left_col)} = {aliases[current_table]}.{quote(right_col)}"
                     conditions.append(cond)
                 
                 on_clause = " AND ".join(conditions)
                 
-                # Construct the statement
+                # Debug comment to explain logic
+                # logic_note = f"-- Linked via: {', '.join(final_keys)}"
+                
                 join_stmt = (
                     f"LEFT JOIN {quote(current_table)} {aliases[current_table]} "
                     f"ON {on_clause}"
                 )
                 
-                # We prioritize joining to the most recently added table (greedy approach)
-                # or just take the first valid connection we find.
                 best_join = join_stmt
                 found_connection = True
-                break # Stop looking for other parents, we found a valid link
+                break 
 
         if found_connection:
             sql_lines.append(best_join)
@@ -1851,7 +1897,6 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
             )
             joined_tables.add(current_table)
 
-    # added LIMIT for Postgres/Snowflake
     if limit_suffix:
         sql_lines.append(limit_suffix)
 
