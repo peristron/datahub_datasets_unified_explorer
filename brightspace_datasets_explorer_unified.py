@@ -666,95 +666,81 @@ def load_data() -> pd.DataFrame:
 
 
 @st.cache_data
+#------------------------------
+@st.cache_data
 def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculates join conditions.
-    Improves on strict PK/FK matching by inferring FKs if a column name matches a known PK.
-    Also handles D2L specific synonyms (e.g. CourseOfferingId -> OrgUnitId).
+    1. Uses implicit defaults to ensure Hubs (Users, OrgUnits) are valid Targets.
+    2. Allows columns to be Sources if they are marked as FKs, even if they are also PKs.
+    3. Handles Synonym/Alias matching.
     """
     if df.empty:
         return pd.DataFrame()
 
-    # ensure required columns exist
-    if 'is_primary_key' not in df.columns:
-        return pd.DataFrame()
+    # 1. Identify definitive Primary Keys (Targets) from Scrape Data
+    # We create a copy so we can inject implicit keys without altering the main df
+    pks = df[df['is_primary_key'] == True].copy()
+    
+    # --- SAFETY NET: HARDCODED / IMPLICIT PRIMARY KEYS ---
+    # This ensures that even if the scraper misses the "PK" flag in the docs (common for Hubs),
+    # we force the application to recognize these tables as the "Owners" of these keys.
+    IMPLICIT_PKS = {
+        'Users': ['UserId', 'UserName'],
+        'Organizational Units': ['OrgUnitId', 'Code'],
+        'Role Details': ['RoleId'],
+        'Semester': ['SemesterId'],
+        'Department': ['DepartmentId'],
+        'Course Offerings': ['CourseOfferingId'],
+        'Quiz Objects': ['QuizId'],
+        'Assignment Objects': ['AssignmentId'],
+        'Content Objects': ['ContentObjectId'],
+        'Discussion Forums': ['ForumId'],
+        'Discussion Topics': ['TopicId']
+    }
 
-    # 1. Identify definitive Primary Keys
-    pks = df[df['is_primary_key'] == True]
+    # Inject implicit PKs if they exist in the dataframe but aren't currently flagged in 'pks'
+    for ds_name, cols in IMPLICIT_PKS.items():
+        for col in cols:
+            # Check if this dataset+column exists in the loaded data
+            mask = (df['dataset_name'] == ds_name) & (df['column_name'] == col)
+            if mask.any():
+                # Check if it's already in our pks list
+                already_exists = not pks[
+                    (pks['dataset_name'] == ds_name) & (pks['column_name'] == col)
+                ].empty
+                
+                if not already_exists:
+                    # Add it to the PKs list manually
+                    row = df[mask].iloc[0].to_dict()
+                    row['is_primary_key'] = True
+                    pks = pd.concat([pks, pd.DataFrame([row])], ignore_index=True)
+
     if pks.empty:
         return pd.DataFrame()
 
-#------------------------------
-    # 2. Identify potential foreign keys (Exact Match)
-    # RELAXED LOGIC: If a column name matches a known PK name, we consider it a join candidate,
-    # even if strict PK/FK flags are missing.
+    # 2. Identify Potential Foreign Keys (Sources)
     pk_names = pks['column_name'].unique()
-
-    # Also include "Universal Keys" that should always join if they exist in both tables
-    universal_keys = ['UserId', 'OrgUnitId', 'SectionId', 'CourseOfferingId', 'RoleId', 'GroupCategoryId', 'SemesterId']
     
-    # Filter for potential FKs (columns that look like keys but aren't the table's own PK)
+    # CRITICAL FIX: The Logic must allow a column to be a FK if:
+    # A) It is explicitly marked is_foreign_key=True (even if is_primary_key is also True)
+    # B) OR It is NOT a primary key (standard FK)
     potential_fks = df[
-        (df['column_name'].isin(list(pk_names) + universal_keys)) & 
-        (df['dataset_name'] != df['dataset_name']) # Logic placeholder to ensure we don't self-join on row index, logic continues below
+        (df['column_name'].isin(pk_names)) & 
+        (
+            (df['is_primary_key'] == False) | 
+            (df['is_foreign_key'] == True)
+        )
     ].copy()
     
-    # Re-select properly: Any column in DF that matches a PK name or Universal Key, excluding the row that IS the PK
-    potential_fks = df[
-        (df['column_name'].isin(list(pk_names) + universal_keys)) &
-        (df['is_primary_key'] == False)
-    ].copy()
+    # Remove rows where the dataset is the same as the PK dataset (prevent strict self-joins here)
+    # We do this by ensuring we don't match a table to itself in the next step, 
+    # but we can also filter here if needed. For now, the merge + filtering later handles it.
 
     # 3. Perform Exact Match Merge
-    # We map potential FKs to the PKs. 
-    # If a Universal Key (like UserId) is found but no table claimed it as PK (missing scrape flag),
-    # we simulate the PK side if the dataset name matches the key (e.g. Users table + UserId column).
-    
-    # 3a. Standard Merge
-    exact_joins = pd.DataFrame()
-    if not potential_fks.empty:
-        exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
-        
-    # 3b. Universal Fallback (Fix for missing "PK" flags in documentation)
-    # If we have UserId in 'Course Access' but 'Users' table didn't get flagged as having UserId as PK
-    if exact_joins.empty and 'UserId' in df['column_name'].values:
-        # Manually construct links for known dimensions
-        for u_key in universal_keys:
-            # Find tables that have this column
-            has_key = df[df['column_name'] == u_key]
-            if has_key.empty: continue
-            
-            # Heuristic: The table with the shortest name containing the key is likely the parent
-            # e.g. "Users" is parent for "UserId", "Organizational Units" is parent for "OrgUnitId"
-            
-            # Find potential parents (tables that contain the key)
-            potential_parents = has_key['dataset_name'].unique()
-            
-            # Simple heuristic mapping for the "Owner" of these keys
-            owner_map = {
-                'UserId': 'Users',
-                'OrgUnitId': 'Organizational Units', 
-                'CourseOfferingId': 'Organizational Units', # Smart Alias handled later, but good to have
-                'RoleId': 'Role Details'
-            }
-            
-            target_parent = owner_map.get(u_key)
-            
-            if target_parent and target_parent in potential_parents:
-                parent_slice = has_key[has_key['dataset_name'] == target_parent]
-                children_slice = has_key[has_key['dataset_name'] != target_parent]
-                
-                if not parent_slice.empty and not children_slice.empty:
-                    # Create artificial join rows
-                    fallback = pd.merge(children_slice, parent_slice, on='column_name', suffixes=('_fk', '_pk'))
-                    exact_joins = pd.concat([exact_joins, fallback])
-
-    # Remove duplicates created by the fallback strategy
-    if not exact_joins.empty:
-        exact_joins = exact_joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
+    exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
 
     # 4. Perform Synonym/Alias Match (The "Smart" Logic)
-#------------
     alias_map = {
         'CourseOfferingId': 'OrgUnitId',
         'SectionId': 'OrgUnitId',
@@ -766,34 +752,30 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         'AssignedToUserId': 'UserId',
         'CreatedBy': 'UserId',
         'ActionUserId': 'UserId',
-        'TargetUserId': 'UserId'
+        'TargetUserId': 'UserId',
+        'LastModifiedBy': 'UserId'
     }
 
-    # Get columns that match our alias list
-    aliased_fks = df[
-        (df['column_name'].isin(alias_map.keys())) &
-        (df['is_primary_key'] == False)
-    ].copy()
-
     alias_joins = pd.DataFrame()
-    if not aliased_fks.empty:
-        # Create a temporary column to bridge the join
-        aliased_fks['target_pk_name'] = aliased_fks['column_name'].map(alias_map)
-
-        # Use same suffixes as exact_joins so we get dataset_name_fk/pk, category_fk/pk, etc.
-        alias_joins = pd.merge(
-            aliased_fks,
-            pks,
-            left_on='target_pk_name',
-            right_on='column_name',
-            suffixes=('_fk', '_pk')
-        )
-
-        # Use the FK-side column name as the join label (e.g., CourseOfferingId)
-        alias_joins['column_name'] = alias_joins['column_name_fk']
-
-        # Clean up temp column
-        alias_joins = alias_joins.drop(columns=['target_pk_name'])
+    for alias_col, target_pk in alias_map.items():
+        # Do we have this alias column as a potential FK?
+        # Apply the same "PK, FK" logic here
+        alias_candidates = df[
+            (df['column_name'] == alias_col) & 
+            (
+                (df['is_primary_key'] == False) | 
+                (df['is_foreign_key'] == True)
+            )
+        ]
+        
+        # Do we have the target PK?
+        target_pk_rows = pks[pks['column_name'] == target_pk]
+        
+        if not alias_candidates.empty and not target_pk_rows.empty:
+            temp_join = pd.merge(alias_candidates, target_pk_rows, how='cross', suffixes=('_fk', '_pk'))
+            # Fix join column name to be the alias (Source)
+            temp_join['column_name'] = temp_join['column_name_fk']
+            alias_joins = pd.concat([alias_joins, temp_join])
 
     # 5. Combine and Clean
     all_joins = pd.concat([exact_joins, alias_joins], ignore_index=True)
@@ -802,14 +784,12 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
     # Exclude self-joins (joining a table to itself)
-    if 'dataset_name_fk' in all_joins.columns and 'dataset_name_pk' in all_joins.columns:
-        joins = all_joins[all_joins['dataset_name_fk'] != all_joins['dataset_name_pk']]
+    joins = all_joins[all_joins['dataset_name_fk'] != all_joins['dataset_name_pk']]
+    
+    # Final cleanup to ensure distinct relationships
+    joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
 
-        # Ensure distinct relationships
-        joins = joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
-        return joins
-
-    return pd.DataFrame()
+    return joins
 
 
 def get_joins(df: pd.DataFrame) -> pd.DataFrame:
