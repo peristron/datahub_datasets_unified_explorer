@@ -2702,7 +2702,49 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
 
                     st.text_area("DOT Code", dot_string, height=150)
                     st.download_button("📥 Download .gv File", dot_string, "diagram.gv")
+#------------------------------
+                with c_png:
+                    st.markdown("#### Mermaid.js Export")
+                    st.caption("Copy into GitHub, Notion, or Obsidian.")
+                    
+                    mermaid_lines = ["graph LR"]
+                    
+                    # Add styles
+                    mermaid_lines.append("    classDef focus fill:#0969da,stroke:#fff,stroke-width:2px,color:#fff;")
+                    mermaid_lines.append("    classDef neighbor fill:#f6f8fa,stroke:#d0d7de,stroke-width:1px,color:#24292f;")
 
+                    # Add nodes
+                    for ds in selected_datasets:
+                        safe_id = re.sub(r'[^a-zA-Z0-9]', '_', ds)
+                        mermaid_lines.append(f"    {safe_id}[{ds}]:::focus")
+
+                    # Add edges
+                    if not export_joins.empty:
+                        for _, row in export_joins.iterrows():
+                            s = row['Source Dataset']
+                            t = row['Target Dataset']
+                            k = row['column_name']
+                            
+                            s_id = re.sub(r'[^a-zA-Z0-9]', '_', s)
+                            t_id = re.sub(r'[^a-zA-Z0-9]', '_', t)
+                            
+                            # Filter based on mode (Focused vs Discovery) - reusing logic from DOT generation
+                            include_edge = False
+                            if mode == 'focused':
+                                if s in selected_datasets and t in selected_datasets:
+                                    include_edge = True
+                            else:
+                                if s in selected_datasets:
+                                    include_edge = True
+                                    # Ensure target node is defined if it wasn't a focus node
+                                    if t not in selected_datasets:
+                                        mermaid_lines.append(f"    {t_id}[{t}]:::neighbor")
+
+                            if include_edge:
+                                mermaid_lines.append(f"    {s_id} -- {k} --> {t_id}")
+
+                    mermaid_string = "\n".join(mermaid_lines)
+                    st.text_area("Mermaid Code", mermaid_string, height=150)
             # Integrated SQL generation
             if mode == 'focused' and len(selected_datasets) > 1:
                 with st.expander("⚡ Get SQL for this View", expanded=False):
