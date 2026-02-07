@@ -1743,7 +1743,7 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
     generates a deterministic sql join query with dialect-specific syntax.
-    Supports Composite Keys (joining on multiple columns like UserId AND OrgUnitId).
+    Supports Composite Keys AND Sibling Joins (inferring shared dimensions like UserId).
     """
     # remove duplicates while preserving order
     selected_datasets = list(dict.fromkeys(selected_datasets))
@@ -1765,21 +1765,17 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     def quote(name):
         return f"{q_start}{name}{q_end}"
 
-    # build the full connection graph
-    # CHANGE: Edges now store a LIST of keys, not just a single key
+    # build the full connection graph (Parent-Child relationships)
     G_full = nx.Graph()
     joins = get_joins(df)
 
     if not joins.empty:
         for _, r in joins.iterrows():
             src, tgt, key = r['dataset_name_fk'], r['dataset_name_pk'], r['column_name']
-            
             if G_full.has_edge(src, tgt):
-                # If edge exists, append the new key to the list (avoid duplicates)
                 if key not in G_full[src][tgt]['keys']:
                     G_full[src][tgt]['keys'].append(key)
             else:
-                # Create new edge with list of keys
                 G_full.add_edge(src, tgt, keys=[key])
 
     # initialize query
@@ -1795,35 +1791,60 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
 
     joined_tables = {base_table}
     remaining_tables = selected_datasets[1:]
+    
+    # Universal Keys that should ALWAYS be included in a join if shared (Sibling Logic)
+    UNIVERSAL_KEYS = ['UserId', 'OrgUnitId', 'SectionId', 'SemesterId', 'DepartmentId', 'SessionId']
 
     # join strategy
     for current_table in remaining_tables:
         found_connection = False
+        best_join = None
+
+        # Helper to get columns for a table
+        curr_cols = set(df[df['dataset_name'] == current_table]['column_name'])
 
         for existing_table in joined_tables:
+            exist_cols = set(df[df['dataset_name'] == existing_table]['column_name'])
+            
+            # 1. Check for Explicit Parent-Child Edge in Graph
+            graph_keys = []
             if G_full.has_edge(current_table, existing_table):
-                # CHANGE: Retrieve list of keys and build composite AND condition
-                keys = G_full[current_table][existing_table]['keys']
-                
-                # Build ON clause: t1.Col = t2.Col AND t1.Col2 = t2.Col2
+                graph_keys = G_full[current_table][existing_table]['keys']
+            
+            # 2. Check for Implicit Sibling Dimensions (Universal Keys)
+            # Find which universal keys exist in BOTH tables
+            shared_universal = [k for k in UNIVERSAL_KEYS if k in curr_cols and k in exist_cols]
+            
+            # 3. Merge Keys
+            # We prefer Graph Keys, but we MUST augment with Shared Universal Keys to prevent cartesian products.
+            # e.g. If Graph says "OrgUnitId", but both also have "UserId", we add "UserId".
+            final_keys = sorted(list(set(graph_keys + shared_universal)))
+            
+            if final_keys:
+                # Build ON clause
                 conditions = []
-                for k in keys:
+                for k in final_keys:
                     cond = f"{aliases[existing_table]}.{quote(k)} = {aliases[current_table]}.{quote(k)}"
                     conditions.append(cond)
                 
                 on_clause = " AND ".join(conditions)
-
-                join_line = (
+                
+                # Construct the statement
+                join_stmt = (
                     f"LEFT JOIN {quote(current_table)} {aliases[current_table]} "
                     f"ON {on_clause}"
                 )
-                sql_lines.append(join_line)
-
-                joined_tables.add(current_table)
+                
+                # We prioritize joining to the most recently added table (greedy approach)
+                # or just take the first valid connection we find.
+                best_join = join_stmt
                 found_connection = True
-                break
+                break # Stop looking for other parents, we found a valid link
 
-        if not found_connection:
+        if found_connection:
+            sql_lines.append(best_join)
+            joined_tables.add(current_table)
+        else:
             sql_lines.append(
                 f"CROSS JOIN {quote(current_table)} {aliases[current_table]} "
                 f"-- ⚠️ no direct relationship found in metadata"
