@@ -684,18 +684,74 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     if pks.empty:
         return pd.DataFrame()
 
+#------------------------------
     # 2. Identify potential foreign keys (Exact Match)
+    # RELAXED LOGIC: If a column name matches a known PK name, we consider it a join candidate,
+    # even if strict PK/FK flags are missing.
     pk_names = pks['column_name'].unique()
 
+    # Also include "Universal Keys" that should always join if they exist in both tables
+    universal_keys = ['UserId', 'OrgUnitId', 'SectionId', 'CourseOfferingId', 'RoleId', 'GroupCategoryId', 'SemesterId']
+    
+    # Filter for potential FKs (columns that look like keys but aren't the table's own PK)
     potential_fks = df[
-        (df['column_name'].isin(pk_names)) &
+        (df['column_name'].isin(list(pk_names) + universal_keys)) & 
+        (df['dataset_name'] != df['dataset_name']) # Logic placeholder to ensure we don't self-join on row index, logic continues below
+    ].copy()
+    
+    # Re-select properly: Any column in DF that matches a PK name or Universal Key, excluding the row that IS the PK
+    potential_fks = df[
+        (df['column_name'].isin(list(pk_names) + universal_keys)) &
         (df['is_primary_key'] == False)
-    ]
+    ].copy()
 
     # 3. Perform Exact Match Merge
+    # We map potential FKs to the PKs. 
+    # If a Universal Key (like UserId) is found but no table claimed it as PK (missing scrape flag),
+    # we simulate the PK side if the dataset name matches the key (e.g. Users table + UserId column).
+    
+    # 3a. Standard Merge
     exact_joins = pd.DataFrame()
     if not potential_fks.empty:
         exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
+        
+    # 3b. Universal Fallback (Fix for missing "PK" flags in documentation)
+    # If we have UserId in 'Course Access' but 'Users' table didn't get flagged as having UserId as PK
+    if exact_joins.empty and 'UserId' in df['column_name'].values:
+        # Manually construct links for known dimensions
+        for u_key in universal_keys:
+            # Find tables that have this column
+            has_key = df[df['column_name'] == u_key]
+            if has_key.empty: continue
+            
+            # Heuristic: The table with the shortest name containing the key is likely the parent
+            # e.g. "Users" is parent for "UserId", "Organizational Units" is parent for "OrgUnitId"
+            
+            # Find potential parents (tables that contain the key)
+            potential_parents = has_key['dataset_name'].unique()
+            
+            # Simple heuristic mapping for the "Owner" of these keys
+            owner_map = {
+                'UserId': 'Users',
+                'OrgUnitId': 'Organizational Units', 
+                'CourseOfferingId': 'Organizational Units', # Smart Alias handled later, but good to have
+                'RoleId': 'Role Details'
+            }
+            
+            target_parent = owner_map.get(u_key)
+            
+            if target_parent and target_parent in potential_parents:
+                parent_slice = has_key[has_key['dataset_name'] == target_parent]
+                children_slice = has_key[has_key['dataset_name'] != target_parent]
+                
+                if not parent_slice.empty and not children_slice.empty:
+                    # Create artificial join rows
+                    fallback = pd.merge(children_slice, parent_slice, on='column_name', suffixes=('_fk', '_pk'))
+                    exact_joins = pd.concat([exact_joins, fallback])
+
+    # Remove duplicates created by the fallback strategy
+    if not exact_joins.empty:
+        exact_joins = exact_joins.drop_duplicates(subset=['dataset_name_fk', 'column_name', 'dataset_name_pk'])
 
     # 4. Perform Synonym/Alias Match (The "Smart" Logic)
 #------------
