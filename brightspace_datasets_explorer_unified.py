@@ -2442,6 +2442,10 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub, helping
                         c_info, c_rel = st.columns([2, 1])
 
                         with c_info:
+#------------------------------
+                            desc = ds_meta.get('dataset_description', '')
+                            if desc:
+                                st.caption(f"💡 {desc}")
                             if ds_meta['url']:
                                 st.markdown(f"[View Documentation]({ds_meta['url']})")
 
