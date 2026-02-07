@@ -665,7 +665,6 @@ def load_data() -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@st.cache_data
 #------------------------------
 @st.cache_data
 def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
