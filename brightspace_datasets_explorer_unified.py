@@ -1738,11 +1738,12 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 #------------------------------
+#------------------------------
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
     generates a deterministic sql join query with dialect-specific syntax.
-    supported dialects: 'T-SQL', 'Snowflake', 'PostgreSQL'
+    Supports Composite Keys (joining on multiple columns like UserId AND OrgUnitId).
     """
     # remove duplicates while preserving order
     selected_datasets = list(dict.fromkeys(selected_datasets))
@@ -1765,12 +1766,21 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
         return f"{q_start}{name}{q_end}"
 
     # build the full connection graph
+    # CHANGE: Edges now store a LIST of keys, not just a single key
     G_full = nx.Graph()
     joins = get_joins(df)
 
     if not joins.empty:
         for _, r in joins.iterrows():
-            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+            src, tgt, key = r['dataset_name_fk'], r['dataset_name_pk'], r['column_name']
+            
+            if G_full.has_edge(src, tgt):
+                # If edge exists, append the new key to the list (avoid duplicates)
+                if key not in G_full[src][tgt]['keys']:
+                    G_full[src][tgt]['keys'].append(key)
+            else:
+                # Create new edge with list of keys
+                G_full.add_edge(src, tgt, keys=[key])
 
     # initialize query
     base_table = selected_datasets[0]
@@ -1792,11 +1802,20 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
 
         for existing_table in joined_tables:
             if G_full.has_edge(current_table, existing_table):
-                key = G_full[current_table][existing_table]['key']
+                # CHANGE: Retrieve list of keys and build composite AND condition
+                keys = G_full[current_table][existing_table]['keys']
+                
+                # Build ON clause: t1.Col = t2.Col AND t1.Col2 = t2.Col2
+                conditions = []
+                for k in keys:
+                    cond = f"{aliases[existing_table]}.{quote(k)} = {aliases[current_table]}.{quote(k)}"
+                    conditions.append(cond)
+                
+                on_clause = " AND ".join(conditions)
 
                 join_line = (
                     f"LEFT JOIN {quote(current_table)} {aliases[current_table]} "
-                    f"ON {aliases[existing_table]}.{quote(key)} = {aliases[current_table]}.{quote(key)}"
+                    f"ON {on_clause}"
                 )
                 sql_lines.append(join_line)
 
