@@ -1904,9 +1904,11 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
 
 
 #------------------------------
+#------------------------------
 def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     """
     generates python pandas code to load and merge the selected datasets.
+    Supports Composite Keys, Sibling Joins, and Alias Resolution.
     """
     # remove duplicates while preserving order
     selected_datasets = list(dict.fromkeys(selected_datasets))
@@ -1914,14 +1916,12 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     if len(selected_datasets) < 2:
         return "# please select at least 2 datasets to generate code."
 
-#------------------------------
-    # helper to clean names for python variables (User Logins -> df_user_logins)
+    # helper to clean names for python variables
     def clean_var(name):
-        # remove or replace characters that are invalid in Python identifiers
         clean = name.lower()
-        clean = re.sub(r'[^a-z0-9_]', '_', clean)  # replace non-alphanumeric with underscore
-        clean = re.sub(r'_+', '_', clean)  # collapse multiple underscores
-        clean = clean.strip('_')  # remove leading/trailing underscores
+        clean = re.sub(r'[^a-z0-9_]', '_', clean)
+        clean = re.sub(r'_+', '_', clean)
+        clean = clean.strip('_')
         return f"df_{clean}"
 
     # build connection graph
@@ -1929,7 +1929,12 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     joins = get_joins(df)
     if not joins.empty:
         for _, r in joins.iterrows():
-            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+            src, tgt, key = r['dataset_name_fk'], r['dataset_name_pk'], r['column_name']
+            if G_full.has_edge(src, tgt):
+                if key not in G_full[src][tgt]['keys']:
+                    G_full[src][tgt]['keys'].append(key)
+            else:
+                G_full.add_edge(src, tgt, keys=[key])
 
     lines = ["import pandas as pd", "", "# 1. Load Dataframes"]
 
@@ -1941,7 +1946,6 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     lines.append("")
     lines.append("# 2. Perform Merges")
 
-    # connection logic
     base_ds = selected_datasets[0]
     base_var = clean_var(base_ds)
 
@@ -1950,25 +1954,76 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
 
     joined_tables = {base_ds}
     remaining_tables = selected_datasets[1:]
+    
+    # Sibling Logic Configuration (Must match SQL Builder)
+    UNIVERSAL_KEYS = ['UserId', 'OrgUnitId', 'SectionId', 'SemesterId', 'DepartmentId', 'SessionId']
+    ALIAS_MAP = {
+        'SubmitterId': 'UserId', 'GradedByUserId': 'UserId', 'AssignedToUserId': 'UserId',
+        'EvaluatorId': 'UserId', 'AuditorId': 'UserId', 'LastModifiedBy': 'UserId',
+        'CourseOfferingId': 'OrgUnitId', 'SectionId': 'OrgUnitId', 'ParentOrgUnitId': 'OrgUnitId'
+    }
 
     for current_ds in remaining_tables:
         current_var = clean_var(current_ds)
         found_connection = False
+        
+        # Get raw and resolved columns for current dataset
+        curr_cols_raw = set(df[df['dataset_name'] == current_ds]['column_name'])
+        curr_cols_resolved = set()
+        col_lookup_curr = {} 
+        for c in curr_cols_raw:
+            curr_cols_resolved.add(c)
+            col_lookup_curr[c] = c
+            if c in ALIAS_MAP:
+                canonical = ALIAS_MAP[c]
+                curr_cols_resolved.add(canonical)
+                if canonical not in col_lookup_curr: col_lookup_curr[canonical] = c
+
+        best_merge_code = []
 
         for existing_ds in joined_tables:
+            # Resolve existing table cols
+            exist_cols_raw = set(df[df['dataset_name'] == existing_ds]['column_name'])
+            exist_cols_resolved = set()
+            col_lookup_exist = {}
+            for c in exist_cols_raw:
+                exist_cols_resolved.add(c)
+                col_lookup_exist[c] = c
+                if c in ALIAS_MAP:
+                    canonical = ALIAS_MAP[c]
+                    exist_cols_resolved.add(canonical)
+                    if canonical not in col_lookup_exist: col_lookup_exist[canonical] = c
+
+            # 1. Graph Keys
+            graph_keys = []
             if G_full.has_edge(current_ds, existing_ds):
-                key = G_full[current_ds][existing_ds]['key']
+                graph_keys = G_full[current_ds][existing_ds]['keys']
+
+            # 2. Shared Universal Keys
+            shared_universal = [k for k in UNIVERSAL_KEYS if k in curr_cols_resolved and k in exist_cols_resolved]
+
+            # 3. Merge
+            final_keys = sorted(list(set(graph_keys + shared_universal)))
+
+            if final_keys:
+                left_on = []
+                right_on = []
+                
+                for k in final_keys:
+                    left_on.append(col_lookup_exist.get(k, k))
+                    right_on.append(col_lookup_curr.get(k, k))
 
                 lines.append("")
-                lines.append(f"# Joining {current_ds} to {existing_ds} on {key}")
+                lines.append(f"# Joining {current_ds} to {existing_ds}")
+                lines.append(f"# Keys: {', '.join(final_keys)}")
                 lines.append("final_df = pd.merge(")
                 lines.append("    final_df,")
                 lines.append(f"    {current_var},")
-                lines.append(f"    on='{key}',")
+                lines.append(f"    left_on={left_on},")
+                lines.append(f"    right_on={right_on},")
                 lines.append("    how='left'")
                 lines.append(")")
-
-                joined_tables.add(current_ds)
+                
                 found_connection = True
                 break
 
@@ -1976,17 +2031,14 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
             lines.append("")
             lines.append(f"# ⚠️ No direct key found for {current_ds}. Performing cross join (careful!)")
             lines.append(f"final_df = final_df.merge({current_var}, how='cross')")
-            joined_tables.add(current_ds)
+            
+        joined_tables.add(current_ds)
 
     lines.append("")
     lines.append("# 3. Preview Result")
     lines.append("print(final_df.head())")
 
     return "\n".join(lines)
-
-# =============================================================================
-# 9. view controllers (modular ui)
-# =============================================================================
 
 def render_sidebar(df: pd.DataFrame) -> tuple:
     """renders the sidebar navigation and returns (view, selected_datasets)."""
