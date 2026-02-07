@@ -3966,7 +3966,14 @@ def render_kpi_recipes(df: pd.DataFrame):
                 st.subheader(recipe["title"])
                 st.write(recipe["description"])
 
-                tags = [f"📊 {d}" for d in recipe["datasets"]]
+#------------------------------
+                available_datasets = set(df['dataset_name'].unique())
+                tags = []
+                for d in recipe["datasets"]:
+                    if d in available_datasets:
+                        tags.append(f"✅ {d}")
+                    else:
+                        tags.append(f"❌ {d}")
                 tags.append(f"⚡ {recipe['difficulty']}")
                 st.caption(" • ".join(tags))
 
