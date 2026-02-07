@@ -2638,9 +2638,17 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             with col_c1:
                 graph_height = st.slider("Graph Height", 400, 1200, 600)
 #------------------------------
+#------------------------------
             with col_c2:
                 show_edge_labels = st.checkbox("Show Join Labels", True)
                 validate_joins = st.checkbox("Validate Joins", False, help="Check selection for connectivity issues.")
+                
+                # NEW CHECKBOX
+                hide_hubs = st.checkbox(
+                    "Hide Common Hubs", 
+                    False, 
+                    help="Hides 'Users' and 'Organizational Units' to reduce clutter, unless selected."
+                )
 
             # Joins Validation Logic
             if validate_joins and selected_datasets:
@@ -2710,9 +2718,11 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                 }
             }
 
+            # CALL UPDATED FUNCTION
             fig = create_spring_graph(
                 df, selected_datasets, mode,
-                graph_font_size, node_separation, graph_height, show_edge_labels
+                graph_font_size, node_separation, graph_height, show_edge_labels,
+                hide_hubs=hide_hubs # <--- Pass new parameter
             )
             st.plotly_chart(fig, use_container_width=True, config=config)
 
