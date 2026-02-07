@@ -1154,9 +1154,19 @@ def create_spring_graph(
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
         
+#------------------------------
         if show_edge_labels:
             label_text = edge[2].get('label', '')
-            if label_text:
+            
+            # VISUAL IMPROVEMENT: Clutter Reduction
+            # In 'Discovery' mode, common keys like 'UserId' appear dozens of times, obscuring the graph
+            # suppresses these labels to improve readability, assuming the user knows 'Users' connects via 'UserId'
+            is_common_key = label_text in ['UserId', 'OrgUnitId', 'RoleId', 'SemesterId', 'DepartmentId']
+            
+            # if in discovery mode AND it's a common key, skip drawing the text label
+            if mode == 'discovery' and is_common_key:
+                pass 
+            elif label_text:
                 annotations.append(dict(
                     x=(x0 + x1) / 2,
                     y=(y0 + y1) / 2,
