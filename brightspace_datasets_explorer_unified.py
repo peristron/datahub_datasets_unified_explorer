@@ -2354,16 +2354,17 @@ that almost every other table links to.
                         "outgoing_fks": st.column_config.ProgressColumn(
                             "Refers To (Outgoing)",
                             help="Number of tables this dataset points TO (contains FKs)",
+#------------------------------
                             format="%d",
                             min_value=0,
-                            max_value=int(hubs['outgoing_fks'].max()),
+                            max_value=int(hubs['outgoing_fks'].max()) if not hubs.empty else 100,
                         ),
                         "incoming_fks": st.column_config.ProgressColumn(
                             "Referenced By (Incoming)",
                             help="Number of tables pointing TO this dataset (contains PKs)",
                             format="%d",
                             min_value=0,
-                            max_value=int(hubs['incoming_fks'].max()),
+                            max_value=int(hubs['incoming_fks'].max()) if not hubs.empty else 100,
                         )
                     },
                     use_container_width=True,
