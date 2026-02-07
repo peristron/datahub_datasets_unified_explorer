@@ -3111,7 +3111,81 @@ def render_schema_browser(df: pd.DataFrame):
                     mime="text/csv",
                     help="Download this dataset's columns as CSV for offline use."
                 )
+#------------------------------
+                st.divider()
+                
+                # Mock Data Generator Logic
+                with st.expander("🎲 Generate Mock Data (CSV)", expanded=False):
+                    st.caption("Generate dummy rows for testing ETL scripts or reports.")
+                    
+                    c_rows, c_seed = st.columns(2)
+                    with c_rows:
+                        num_rows = st.number_input("Rows to Generate", min_value=1, max_value=1000, value=10, key=f"mock_n_{selected_ds}")
+                    
+                    if st.button("🚀 Generate Data", key=f"btn_mock_{selected_ds}"):
+                        mock_data = []
+                        import random
+                        from datetime import datetime, timedelta
 
+                        # Simple generator map
+                        def get_mock_value(dtype, col_name):
+                            dtype = dtype.lower()
+                            col_lower = col_name.lower()
+                            
+                            # ID / Key logic
+                            if 'id' in col_lower:
+                                return random.randint(100, 99999)
+                            
+                            # Boolean
+                            if 'bit' in dtype or 'bool' in dtype:
+                                return random.choice([0, 1])
+                            
+                            # Numeric
+                            if 'int' in dtype or 'num' in dtype or 'decimal' in dtype or 'float' in dtype:
+                                return random.randint(0, 100)
+                            
+                            # Dates
+                            if 'date' in dtype or 'time' in dtype:
+                                start_date = datetime.now() - timedelta(days=365)
+                                random_days = random.randint(0, 365)
+                                return (start_date + timedelta(days=random_days)).strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # Strings - Context aware
+                            if 'name' in col_lower:
+                                return random.choice(['Introduction to Data', 'Advanced Analysis', 'Biology 101', 'History of Art'])
+                            if 'user' in col_lower:
+                                return random.choice(['jsmith', 'adoe', 'bwayne', 'ckent'])
+                            if 'code' in col_lower:
+                                return f"CODE-{random.randint(100,999)}"
+                            if 'guid' in dtype or 'uuid' in dtype:
+                                import uuid
+                                return str(uuid.uuid4())
+                            
+                            # Default String
+                            return "Lorem Ipsum"
+
+                        # Generate Rows
+                        cols_to_gen = subset['column_name'].tolist()
+                        types_to_gen = subset['data_type'].tolist()
+                        
+                        for _ in range(num_rows):
+                            row = {}
+                            for col, dtype in zip(cols_to_gen, types_to_gen):
+                                row[col] = get_mock_value(dtype, col)
+                            mock_data.append(row)
+                        
+                        mock_df = pd.DataFrame(mock_data)
+                        
+                        st.dataframe(mock_df.head(), use_container_width=True, hide_index=True)
+                        
+                        # CSV Download
+                        mock_csv = mock_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label=f"📥 Download {num_rows} Mock Rows",
+                            data=mock_csv,
+                            file_name=f"MOCK_{selected_ds.replace(' ', '_')}.csv",
+                            mime="text/csv"
+                        )
 #------------------------------
                 col_pk, col_fk = st.columns(2)
 
