@@ -765,25 +765,27 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     exact_joins = pd.merge(potential_fks, pks, on='column_name', suffixes=('_fk', '_pk'))
 
     # 4. Perform Synonym/Alias Match (The "Smart" Logic)
+#------------------------------
+    # alias_map: maps variant column names to (canonical_pk, hub_dataset)
+    # the hub_dataset constraint prevents spurious joins to any table
+    # that happens to have the canonical PK (e.g., UserId in composite keys)
     alias_map = {
-        'CourseOfferingId': 'OrgUnitId',
-        'SectionId': 'OrgUnitId',
-        'DepartmentId': 'OrgUnitId',
-        'SemesterId': 'OrgUnitId',
-        'ParentOrgUnitId': 'OrgUnitId',
-        'AuditorId': 'UserId',
-        'EvaluatorId': 'UserId',
-        'AssignedToUserId': 'UserId',
-        'CreatedBy': 'UserId',
-        'ActionUserId': 'UserId',
-        'TargetUserId': 'UserId',
-        'LastModifiedBy': 'UserId'
+        'CourseOfferingId': ('OrgUnitId', 'Organizational Units'),
+        'SectionId':        ('OrgUnitId', 'Organizational Units'),
+        'DepartmentId':     ('OrgUnitId', 'Organizational Units'),
+        'SemesterId':       ('OrgUnitId', 'Organizational Units'),
+        'ParentOrgUnitId':  ('OrgUnitId', 'Organizational Units'),
+        'AuditorId':        ('UserId', 'Users'),
+        'EvaluatorId':      ('UserId', 'Users'),
+        'AssignedToUserId': ('UserId', 'Users'),
+        'CreatedBy':        ('UserId', 'Users'),
+        'ActionUserId':     ('UserId', 'Users'),
+        'TargetUserId':     ('UserId', 'Users'),
+        'LastModifiedBy':   ('UserId', 'Users'),
     }
 
     alias_joins = pd.DataFrame()
-    for alias_col, target_pk in alias_map.items():
-        # Do we have this alias column as a potential FK?
-        # Apply the same "PK, FK" logic here
+    for alias_col, (target_pk, hub_dataset) in alias_map.items():
         alias_candidates = df[
             (df['column_name'] == alias_col) & 
             (
@@ -792,12 +794,14 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
             )
         ]
         
-        # Do we have the target PK?
-        target_pk_rows = pks[pks['column_name'] == target_pk]
+        # constrain to ONLY the canonical hub table for this PK
+        target_pk_rows = pks[
+            (pks['column_name'] == target_pk) &
+            (pks['dataset_name'] == hub_dataset)
+        ]
         
         if not alias_candidates.empty and not target_pk_rows.empty:
             temp_join = pd.merge(alias_candidates, target_pk_rows, how='cross', suffixes=('_fk', '_pk'))
-            # Fix join column name to be the alias (Source)
             temp_join['column_name'] = temp_join['column_name_fk']
             alias_joins = pd.concat([alias_joins, temp_join])
 
