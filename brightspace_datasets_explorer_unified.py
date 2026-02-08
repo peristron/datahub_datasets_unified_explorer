@@ -5077,7 +5077,10 @@ def main():
     if st.session_state.get('show_url_editor'):
         render_url_editor()
         return
-
+#------------------------------
+    if st.session_state.get('show_health_check'):
+        render_health_check(df)
+        return
     # handle empty data state
     if df.empty:
         st.title("🔗 Brightspace Dataset Explorer")
