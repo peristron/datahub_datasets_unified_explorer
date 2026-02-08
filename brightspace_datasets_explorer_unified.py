@@ -3257,6 +3257,69 @@ def render_schema_browser(df: pd.DataFrame):
         )
 
         if selected_ds_list:
+#------------------------------
+            # shared column analysis when 2+ datasets selected
+            if len(selected_ds_list) >= 2:
+                with st.expander("🔗 Shared Column Analysis", expanded=True):
+                    st.caption(
+                        "Columns that appear in multiple selected datasets — "
+                        "potential join keys or shared dimensions."
+                    )
+
+                    # build column-to-dataset mapping
+                    col_to_datasets = {}
+                    for ds in selected_ds_list:
+                        ds_cols = df[df['dataset_name'] == ds]['column_name'].unique()
+                        for col in ds_cols:
+                            if col not in col_to_datasets:
+                                col_to_datasets[col] = []
+                            col_to_datasets[col].append(ds)
+
+                    # filter to columns appearing in 2+ selected datasets
+                    shared = {
+                        col: datasets
+                        for col, datasets in col_to_datasets.items()
+                        if len(datasets) >= 2
+                    }
+
+                    if shared:
+                        shared_rows = []
+                        for col, datasets in sorted(shared.items()):
+                            shared_rows.append({
+                                "Column": col,
+                                "Shared By": ", ".join(sorted(datasets)),
+                                "Count": len(datasets),
+                                "Is Key": "🔑" if col in ENUM_DEFINITIONS or col.endswith("Id") else ""
+                            })
+
+                        shared_df = pd.DataFrame(shared_rows).sort_values(
+                            ["Count", "Column"], ascending=[False, True]
+                        )
+
+                        st.dataframe(
+                            shared_df,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Count": st.column_config.ProgressColumn(
+                                    "Overlap",
+                                    help="Number of selected datasets containing this column",
+                                    format="%d",
+                                    min_value=0,
+                                    max_value=len(selected_ds_list),
+                                )
+                            }
+                        )
+
+                        st.caption(
+                            f"**{len(shared)}** shared columns found across "
+                            f"**{len(selected_ds_list)}** selected datasets."
+                        )
+                    else:
+                        st.info("No shared columns found between the selected datasets.")
+
+                st.divider()
+
             for i, selected_ds in enumerate(selected_ds_list):
                 if i > 0:
                     st.divider()
