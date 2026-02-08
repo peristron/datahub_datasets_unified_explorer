@@ -559,10 +559,12 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                             entry[header] = columns_[i].text.strip()
 
 #------------------------------
+#------------------------------
                     header_map = {
                         'field': 'column_name',
                         'field_name': 'column_name',
                         'name': 'column_name',
+                        'column': 'column_name',
                         'type': 'data_type',
                         'data_type': 'data_type',
                         'description': 'description',
