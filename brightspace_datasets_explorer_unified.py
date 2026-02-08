@@ -4555,6 +4555,300 @@ def render_url_editor():
 # =============================================================================
 # 10. UDF Flattener (EAV → wide)
 # =============================================================================
+#------------------------------
+def render_health_check(df: pd.DataFrame):
+    """validates stored schema against live D2L documentation."""
+    st.header("🩺 Scrape Health Check")
+    st.markdown("Validate the integrity of your scraped data against live D2L documentation.")
+
+    # =============================================
+    # TIER 1: Offline Checks (instant, no network)
+    # =============================================
+    st.subheader("⚡ Offline Checks")
+
+    issues = []
+    passes = []
+
+    # 1. CSV Staleness
+    try:
+        mod_time = os.path.getmtime('dataset_metadata.csv')
+        days_old = (pd.Timestamp.now() - pd.Timestamp(mod_time, unit='s')).days
+        if days_old > 30:
+            issues.append(f"⚠️ **Stale Data:** CSV is **{days_old}** days old. Consider re-scraping.")
+        elif days_old > 7:
+            passes.append(f"🟡 CSV is {days_old} days old.")
+        else:
+            passes.append(f"✅ CSV is fresh ({days_old} day(s) old).")
+    except Exception:
+        issues.append("❌ Cannot determine CSV age.")
+
+    # 2. Datasets with zero columns
+    ds_col_counts = df.groupby('dataset_name')['column_name'].count()
+    zero_col_ds = ds_col_counts[ds_col_counts == 0].index.tolist()
+    if zero_col_ds:
+        issues.append(
+            f"❌ **Empty Datasets:** {len(zero_col_ds)} dataset(s) have zero columns: "
+            f"{', '.join(zero_col_ds[:5])}"
+        )
+    else:
+        passes.append(f"✅ All {df['dataset_name'].nunique()} datasets have at least 1 column.")
+
+    # 3. Duplicate dataset names (case-insensitive)
+    from collections import Counter
+    name_counts = Counter(df['dataset_name'].str.lower())
+    dupes = [name for name, count in name_counts.items() if count > 1]
+    if dupes:
+        issues.append(f"⚠️ **Possible Duplicate Datasets:** {', '.join(dupes[:5])}")
+    else:
+        passes.append("✅ No duplicate dataset names detected.")
+
+    # 4. Categories with only 1 dataset
+    cat_counts = df.groupby('category')['dataset_name'].nunique()
+    singleton_cats = cat_counts[cat_counts == 1].index.tolist()
+    if singleton_cats:
+        issues.append(
+            f"🟡 **Singleton Categories:** {len(singleton_cats)} category(ies) have only 1 dataset: "
+            f"{', '.join(singleton_cats[:5])}"
+        )
+    else:
+        passes.append("✅ All categories have multiple datasets.")
+
+    # 5. Suspect column names (possible header-as-data ingestion)
+    suspect_names = ['field', 'type', 'description', 'name', 'column', 'data type']
+    suspects = df[df['column_name'].str.lower().isin(suspect_names)]
+    if not suspects.empty:
+        ds_list = suspects['dataset_name'].unique()[:5]
+        issues.append(
+            f"⚠️ **Suspect Column Names:** Found columns named like table headers in: "
+            f"{', '.join(ds_list)}"
+        )
+    else:
+        passes.append("✅ No suspect header-as-data columns detected.")
+
+    # 6. Datasets missing descriptions
+    desc_col = 'dataset_description'
+    if desc_col in df.columns:
+        ds_descs = df.groupby('dataset_name')[desc_col].first()
+        missing_desc = ds_descs[ds_descs.astype(str).str.strip() == ''].index.tolist()
+        total_ds = df['dataset_name'].nunique()
+        has_desc = total_ds - len(missing_desc)
+        if len(missing_desc) > total_ds * 0.5:
+            issues.append(
+                f"🟡 **Low Description Coverage:** Only {has_desc}/{total_ds} datasets "
+                f"have context descriptions."
+            )
+        else:
+            passes.append(f"✅ Description coverage: {has_desc}/{total_ds} datasets.")
+
+    # Display offline results
+    col_pass, col_issue = st.columns(2)
+    with col_pass:
+        for p in passes:
+            st.markdown(p)
+    with col_issue:
+        for i in issues:
+            st.markdown(i)
+
+    if not issues:
+        st.success("All offline checks passed!")
+
+    st.divider()
+
+    # =============================================
+    # TIER 2: Online Validation (hits D2L pages)
+    # =============================================
+    st.subheader("🌐 Online Validation")
+    st.caption("Re-scrapes a sample of pages and compares against stored data to detect drift.")
+
+    urls_text = st.session_state.get('custom_urls') or DEFAULT_URLS
+    all_urls = [u.strip() for u in urls_text.split('\n') if u.strip().startswith('http')]
+
+    col_config, col_action = st.columns([2, 1])
+
+    with col_config:
+        sample_size = st.slider(
+            "Pages to Sample",
+            min_value=1,
+            max_value=min(len(all_urls), 10),
+            value=min(5, len(all_urls)),
+            help="Number of random URLs to re-scrape for comparison."
+        )
+
+    with col_action:
+        st.write("")  # spacer
+        run_check = st.button("🔍 Run Live Check", type="primary", use_container_width=True)
+
+    if run_check:
+        import random
+
+        sampled_urls = random.sample(all_urls, sample_size)
+        results = []
+        progress = st.progress(0, "Starting validation...")
+
+        for i, url in enumerate(sampled_urls):
+            progress.progress(
+                (i + 1) / len(sampled_urls),
+                f"Checking {i + 1}/{len(sampled_urls)}..."
+            )
+
+            # Extract category using same logic as scrape_and_save
+            filename = os.path.basename(url).split('?')[0]
+            if "advanced" in filename.lower():
+                category = "Advanced Data Sets"
+            else:
+                clean_name = re.sub(r'^[\d\s-]+', '', filename)
+                category = clean_name.replace('-data-sets', '').replace('-', ' ').strip().lower()
+
+            try:
+                live_data = scrape_table(url, category)
+                if not live_data:
+                    results.append({
+                        'url': url,
+                        'status': '❌ Empty',
+                        'detail': 'Live scrape returned no data',
+                        'added_ds': set(),
+                        'removed_ds': set(),
+                        'col_diffs': []
+                    })
+                    continue
+
+                live_df = pd.DataFrame(live_data)
+                live_df['dataset_name'] = live_df['dataset_name'].astype(str).apply(smart_title)
+
+                # Get stored data for this URL
+                stored_for_url = df[df['url'] == url]
+
+                stored_ds = set(stored_for_url['dataset_name'].unique())
+                live_ds = set(live_df['dataset_name'].unique())
+
+                added_ds = live_ds - stored_ds
+                removed_ds = stored_ds - live_ds
+                common_ds = stored_ds & live_ds
+
+                # Column-level comparison per common dataset
+                col_diffs = []
+                for ds in sorted(common_ds):
+                    stored_cols = set(
+                        stored_for_url[stored_for_url['dataset_name'] == ds]['column_name']
+                    )
+                    live_cols = set(
+                        live_df[live_df['dataset_name'] == ds]['column_name']
+                    ) if 'column_name' in live_df.columns else set()
+
+                    new_cols = live_cols - stored_cols
+                    gone_cols = stored_cols - live_cols
+
+                    if new_cols or gone_cols:
+                        col_diffs.append({
+                            'dataset': ds,
+                            'added': new_cols,
+                            'removed': gone_cols
+                        })
+
+                # Determine overall status
+                if not added_ds and not removed_ds and not col_diffs:
+                    status = '✅ Match'
+                    detail = 'No drift detected'
+                else:
+                    parts = []
+                    if added_ds:
+                        parts.append(f"+{len(added_ds)} new dataset(s)")
+                    if removed_ds:
+                        parts.append(f"-{len(removed_ds)} missing dataset(s)")
+                    if col_diffs:
+                        parts.append(f"{len(col_diffs)} dataset(s) with column changes")
+                    status = '⚠️ Drift'
+                    detail = '; '.join(parts)
+
+                results.append({
+                    'url': url,
+                    'status': status,
+                    'detail': detail,
+                    'added_ds': added_ds,
+                    'removed_ds': removed_ds,
+                    'col_diffs': col_diffs
+                })
+
+            except Exception as e:
+                results.append({
+                    'url': url,
+                    'status': '❌ Error',
+                    'detail': str(e)[:100],
+                    'added_ds': set(),
+                    'removed_ds': set(),
+                    'col_diffs': []
+                })
+
+        progress.empty()
+
+        # Summary metrics
+        st.markdown("### 📋 Results")
+
+        match_count = sum(1 for r in results if '✅' in r['status'])
+        drift_count = sum(1 for r in results if '⚠️' in r['status'])
+        error_count = sum(1 for r in results if '❌' in r['status'])
+
+        col_m, col_d, col_e = st.columns(3)
+        col_m.metric("✅ Match", match_count)
+        col_d.metric("⚠️ Drift", drift_count)
+        col_e.metric("❌ Error", error_count)
+
+        # Per-URL detail
+        for result in results:
+            page_name = os.path.basename(result['url']).split('?')[0][:50]
+            is_problem = '⚠️' in result['status'] or '❌' in result['status']
+
+            with st.expander(
+                f"{result['status']} {page_name}",
+                expanded=is_problem
+            ):
+                st.caption(f"URL: {result['url']}")
+                st.markdown(f"**Status:** {result['detail']}")
+
+                if result.get('added_ds'):
+                    st.markdown("**New Datasets (on live page, not in stored CSV):**")
+                    for ds in sorted(result['added_ds']):
+                        st.markdown(f"- `{ds}` ➕")
+
+                if result.get('removed_ds'):
+                    st.markdown("**Missing Datasets (in stored CSV, not on live page):**")
+                    for ds in sorted(result['removed_ds']):
+                        st.markdown(f"- `{ds}` ➖")
+
+                if result.get('col_diffs'):
+                    st.markdown("**Column Changes:**")
+                    for diff in result['col_diffs']:
+                        st.markdown(f"**{diff['dataset']}:**")
+                        if diff['added']:
+                            st.markdown(
+                                f"  - Added: `{'`, `'.join(sorted(diff['added']))}`"
+                            )
+                        if diff['removed']:
+                            st.markdown(
+                                f"  - Removed: `{'`, `'.join(sorted(diff['removed']))}`"
+                            )
+
+        # Recommendation
+        st.divider()
+        if drift_count > 0:
+            st.warning(
+                f"⚠️ **Drift detected on {drift_count}/{len(results)} page(s).** "
+                f"Consider running **🔄 Scrape & Update** to refresh the schema."
+            )
+        elif error_count > 0:
+            st.error(
+                f"❌ **{error_count} page(s) had errors.** "
+                f"Check if these URLs are still valid in the URL editor."
+            )
+        else:
+            st.success("🎉 All sampled pages match the stored schema. No action needed.")
+
+    # Back button
+    st.divider()
+    if st.button("← Back to App", use_container_width=True):
+        st.session_state['show_health_check'] = False
+        st.rerun()
+
 
 #------------------------------
 def render_udf_flattener(df: pd.DataFrame):
