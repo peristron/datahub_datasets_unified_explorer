@@ -1284,6 +1284,41 @@ def create_spring_graph(
         )
     )
     return fig
+#------------------------------
+    # build category legend from nodes in the graph
+    legend_categories = {}
+    for node in G.nodes():
+        subset = df[df['dataset_name'] == node]
+        if not subset.empty:
+            cat = subset['category'].iloc[0]
+            if cat not in legend_categories:
+                legend_categories[cat] = cat_colors.get(cat, '#ccc')
+
+    # add invisible traces to create legend entries
+    for cat_name, color in sorted(legend_categories.items()):
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='markers',
+            marker=dict(size=10, color=color, symbol='square'),
+            name=cat_name,
+            showlegend=True
+        ))
+
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(
+            title=dict(text="Categories", font=dict(color='#8B949E', size=12)),
+            font=dict(color='#C9D1D9', size=11),
+            bgcolor='rgba(30, 35, 43, 0.85)',
+            bordercolor='#30363D',
+            borderwidth=1,
+            orientation='v',
+            yanchor='top',
+            y=0.99,
+            xanchor='left',
+            x=0.01
+        )
+    )
 
 
 @st.cache_data
