@@ -516,8 +516,9 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 if clean_text_lower.startswith("about "):  # NEW: Ignore subheaders like "About Time Tracking" to prevent overwrite
                     continue
 
+#------------------------------
                 if len(text) > 3:
-                    current_dataset = text.title()
+                    current_dataset = smart_title(text)
 
                     next_sibling = element.find_next_sibling()
                     if next_sibling and next_sibling.name == 'p':
