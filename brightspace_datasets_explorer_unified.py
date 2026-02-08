@@ -647,8 +647,9 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     df = df.fillna('')
 
     # clean up text - title case for readability
-    df['dataset_name'] = df['dataset_name'].astype(str).str.title()
-    df['category'] = df['category'].astype(str).str.title()
+#------------------------------
+    df['dataset_name'] = df['dataset_name'].astype(str).apply(smart_title)
+    df['category'] = df['category'].astype(str).apply(smart_title)
 
 #------------------------------
     # ensure expected columns exist
