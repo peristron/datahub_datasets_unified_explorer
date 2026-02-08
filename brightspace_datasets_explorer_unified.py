@@ -535,12 +535,13 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 if not rows:
                     continue
 
+#------------------------------
                 header_cells = element.find_all('th')
                 if not header_cells and rows:
                     header_cells = rows[0].find_all('td')
                     data_rows = rows[1:]
                 else:
-                    data_rows = rows
+                    data_rows = rows[1:]  # skip the header <tr> which contains <th> cells
 
                 if not header_cells:
                     continue
