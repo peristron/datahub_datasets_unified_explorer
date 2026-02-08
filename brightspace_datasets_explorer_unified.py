@@ -2795,8 +2795,17 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
 
         with st.expander("🛠️ Graph Settings", expanded=False):
             col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+#------------------------------
             with col_c1:
                 graph_height = st.slider("Graph Height", 400, 1200, 600)
+                edge_font_size = st.slider(
+                    "Edge Label Size", 6, 20, 12,
+                    help="Font size for join key labels on connections."
+                )
+                edge_thickness = st.slider(
+                    "Edge Thickness", 0.5, 5.0, 1.5, step=0.5,
+                    help="Line thickness for connections between datasets."
+                )
 #------------------------------
 #------------------------------
             with col_c2:
