@@ -2799,7 +2799,7 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             with col_c1:
                 graph_height = st.slider("Graph Height", 400, 1200, 600)
                 edge_font_size = st.slider(
-                    "Edge Label Size", 6, 20, 12,
+                    "Edge Label Size", 6, 20, 16,
                     help="Font size for join key labels on connections."
                 )
                 edge_thickness = st.slider(
