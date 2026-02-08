@@ -1081,6 +1081,7 @@ def get_category_colors(categories: List[str]) -> Dict[str, str]:
 
 
 #------------------------------
+#------------------------------
 def create_spring_graph(
     df: pd.DataFrame,
     selected_datasets: List[str],
@@ -1089,7 +1090,9 @@ def create_spring_graph(
     node_separation: float = 0.9,
     graph_height: int = 600,
     show_edge_labels: bool = True,
-    hide_hubs: bool = False  # <--- NEW PARAMETER
+    hide_hubs: bool = False,
+    edge_font_size: int = 12,
+    edge_thickness: float = 1.5
 ) -> go.Figure:
     """
     creates a spring-layout graph visualization.
