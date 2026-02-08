@@ -1239,14 +1239,21 @@ def create_spring_graph(
         node_color.append(cat_colors.get(category, '#ccc'))
         node_hover.append(f"<b>{node}</b><br>Category: {category}<br>Type: {node_type.title()}")
 
+#------------------------------
+        # scale node size by number of edges (degree) in the current graph
+        degree = G.degree(node)
         if node_type == 'focus':
-            node_size.append(40)
+            base_size = 30
+            scaled_size = base_size + min(degree * 5, 40)  # 30–70 range
+            node_size.append(scaled_size)
             node_symbol.append('square')
             node_text.append(f'<b>{node}</b>')
             node_line_color.append('white')
             node_line_width.append(3)
         else:
-            node_size.append(20)
+            base_size = 15
+            scaled_size = base_size + min(degree * 4, 25)  # 15–40 range
+            node_size.append(scaled_size)
             node_symbol.append('circle')
             node_text.append(node)
             node_line_color.append('gray')
