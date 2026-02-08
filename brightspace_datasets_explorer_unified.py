@@ -43,7 +43,23 @@ logger = logging.getLogger(__name__)
 
 # suppress insecure request warnings for d2l scrapers
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+#------------------------------
+# known acronyms that .title() would corrupt (e.g., "JIT" -> "Jit")
+PRESERVE_ACRONYMS = [
+    'JIT', 'LTI', 'SIS', 'CPD', 'SCORM', 'PLOE',
+    'SSO', 'API', 'IPSIS', 'UDF', 'LMS', 'SAML', 'LDAP',
+]
 
+
+def smart_title(text: str) -> str:
+    """applies title case while preserving known acronyms."""
+    if not text:
+        return text
+    result = text.title()
+    for acronym in PRESERVE_ACRONYMS:
+        titled_form = acronym.title()  # e.g., "JIT" -> "Jit", "SCORM" -> "Scorm"
+        result = re.sub(r'\b' + re.escape(titled_form) + r'\b', acronym, result)
+    return result
 # apply professional ui css
 st.markdown("""
 <style>
