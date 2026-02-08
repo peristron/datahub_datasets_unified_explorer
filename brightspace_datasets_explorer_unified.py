@@ -343,7 +343,7 @@ def init_session_state():
         'selected_datasets': [],
         'scrape_msg': None,
         'show_url_editor': False,
-        'custom_urls': None
+        'custom_urls': None,
         #------------------------------
         'show_health_check': False
     }
