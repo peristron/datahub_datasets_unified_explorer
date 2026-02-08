@@ -1205,13 +1205,13 @@ def create_spring_graph(
                     borderpad=2,
                     opacity=0.9
                 ))
-
 #------------------------------
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
         line=dict(width=edge_thickness, color='#666'),
         hoverinfo='none',
-        mode='lines'
+        mode='lines',
+        showlegend=False
     )
 
     # build node traces with category colors
@@ -1266,7 +1266,8 @@ def create_spring_graph(
             size=node_size,
             symbol=node_symbol,
             line=dict(color=node_line_color, width=node_line_width)
-        )
+        ),
+        showlegend=False
     )
 
     fig = go.Figure(
@@ -1283,8 +1284,7 @@ def create_spring_graph(
             height=graph_height
         )
     )
-    return fig
-#------------------------------
+
     # build category legend from nodes in the graph
     legend_categories = {}
     for node in G.nodes():
@@ -1320,8 +1320,8 @@ def create_spring_graph(
         )
     )
 
-
-@st.cache_data
+    return fig
+    
 def create_orbital_map(df_hash: str, df: pd.DataFrame,
                        target_node: str = None, filter_keys: tuple = None) -> go.Figure:
     """
