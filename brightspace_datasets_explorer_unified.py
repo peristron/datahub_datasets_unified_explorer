@@ -710,9 +710,10 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     # --- SAFETY NET: HARDCODED / IMPLICIT PRIMARY KEYS ---
     # This ensures that even if the scraper misses the "PK" flag in the docs (common for Hubs),
     # we force the application to recognize these tables as the "Owners" of these keys.
+#------------------------------
     IMPLICIT_PKS = {
-        'Users': ['UserId', 'UserName'],
-        'Organizational Units': ['OrgUnitId', 'Code'],
+        'Users': ['UserId'],
+        'Organizational Units': ['OrgUnitId'],
         'Role Details': ['RoleId'],
         'Semester': ['SemesterId'],
         'Department': ['DepartmentId'],
