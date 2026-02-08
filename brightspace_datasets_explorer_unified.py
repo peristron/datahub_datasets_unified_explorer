@@ -2423,21 +2423,59 @@ def render_dashboard(df: pd.DataFrame):
     st.header("📊 Datahub Datasets Overview")
 
     # How to use section
+#------------------------------
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
 **Welcome to the Brightspace Dataset Explorer**  
-This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub, helping you navigate schemas and build queries, across an ever-growing landscape of available datasets.
+This tool is a Rosetta Stone for the D2L Data Hub — helping you navigate schemas, understand relationships, and build queries across an ever-growing landscape of datasets.
 
-1. **🔍 Search & Context:** Find where columns (e.g., `OrgUnitId`) live and read **summaries** of what each dataset actually does.
-2. **📋 Compare Schemas:** Use the **Schema Browser** to select multiple datasets and inspect their structures side-by-side.
-3. **🔄 Map Analogs (Reports vs. Extracts):**
-   * *Goal:* Re-create an Advanced Dataset (Report) using Brightspace Datasets (Raw Extracts).
-   * *Action:* Use **Schema Browser** to open the Advanced Dataset (e.g., *All Grades*) next to raw tables (e.g., *Grades*).
-   * *Result:* Identify which raw columns match the report columns to build your own custom version.
-4. **⚡ Build Queries:** Select datasets in the **SQL Builder** to auto-generate the correct `LEFT JOIN` syntax.
-5. **🤖 Ask AI:** Unlock the **AI Assistant** to ask plain-language questions about the data model.
+---
 
-**💡 Pro Tip:** Toggle **"Power User"** mode in the sidebar to reveal advanced tools like the *UDF Flattener* and *KPI Recipes*.
+**🟢 Quick Explorer Mode** (default)
+
+| Feature | What It Does |
+|---|---|
+| **🔍 Intelligent Search** | Find where columns (e.g., `OrgUnitId`) live, with context descriptions and relationship summaries |
+| **🗺️ Relationship Map** | Visualize PK/FK connections between datasets. Use **Focused** mode for selected datasets or **Discovery** mode to explore outward |
+| **🤖 AI Assistant** | Ask plain-language questions about the data model (requires login) |
+
+---
+
+**🔷 Power User Mode** (toggle in sidebar)
+
+| Feature | What It Does |
+|---|---|
+| **📋 Schema Browser** | Compare multiple datasets side-by-side. The **Shared Column Analysis** automatically highlights potential join keys across your selection |
+| **🛤️ Path Finder** | Find all valid join paths between any two datasets, with configurable hop depth. Generate SQL or Pandas code for each path |
+| **⚡ SQL Builder** | Select datasets to auto-generate `LEFT JOIN` queries (T-SQL, Snowflake, PostgreSQL) or Python/Pandas merge code |
+| **📚 KPI Recipes** | Pre-packaged SQL for common questions (engagement, grades, quiz analysis) with dataset availability indicators |
+| **🔀 SQL Translator** | AI-powered dialect conversion (e.g., T-SQL → PostgreSQL, SQL → Pandas) |
+| **🔧 UDF Flattener** | Generate PIVOT SQL to transform vertical EAV data into horizontal columns |
+| **✨ Schema Diff** | Upload a backup CSV to detect added/removed datasets, columns, and metadata changes |
+| **🩺 Health Check** | Validate scraped data against live D2L documentation to detect schema drift |
+
+---
+
+**💡 Common Workflows**
+
+**Re-create a Report from Raw Tables:**
+1. Open **Schema Browser** → select an Advanced Dataset (e.g., *All Grades*) and a raw table (e.g., *Grade Results*)
+2. Review the **Shared Column Analysis** to identify matching columns
+3. Use **SQL Builder** to generate the join query
+
+**Find How Two Datasets Connect:**
+1. Open **Path Finder** on the Dashboard (Power User mode)
+2. Select source and target datasets
+3. Review the shortest paths and generate SQL for any path
+
+**Track Schema Changes Over Time:**
+1. Download a **Metadata Backup** from Data Management
+2. After re-scraping later, upload the backup to **Schema Diff**
+3. Review added/removed datasets and columns
+
+**Validate Data Freshness:**
+1. Open **Data Management** → click **🩺 Health Check**
+2. Run offline checks instantly, or sample live pages for drift detection
 """)
 
     is_advanced = st.session_state['experience_mode'] == 'advanced'
