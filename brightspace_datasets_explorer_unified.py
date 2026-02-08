@@ -2888,10 +2888,13 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
             }
 
             # CALL UPDATED FUNCTION
+#------------------------------
             fig = create_spring_graph(
                 df, selected_datasets, mode,
                 graph_font_size, node_separation, graph_height, show_edge_labels,
-                hide_hubs=hide_hubs # <--- Pass new parameter
+                hide_hubs=hide_hubs,
+                edge_font_size=edge_font_size,
+                edge_thickness=edge_thickness
             )
             st.plotly_chart(fig, use_container_width=True, config=config)
 
