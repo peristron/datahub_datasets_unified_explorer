@@ -3561,13 +3561,12 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
                             st.info("No direct connections found for suggestions.")
                     else:
                         st.info("No joins detected for these datasets.")
+#------------------------------
     if selected_datasets:
         if len(selected_datasets) < 2:
             st.warning("Select at least 2 datasets to generate a JOIN.")
         else:
             st.markdown(f"**Selected:** {', '.join(selected_datasets)}")
-
-    # ... (rest of the function remains unchanged)
 
             col_lang, col_opts, _ = st.columns([1, 1, 2])
 
