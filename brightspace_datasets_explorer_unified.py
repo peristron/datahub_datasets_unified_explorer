@@ -1199,7 +1199,8 @@ def create_spring_graph(
                     y=(y0 + y1) / 2,
                     text=label_text,
                     showarrow=False,
-                    font=dict(color="#58A6FF", size=max(10, graph_font_size - 1), family="monospace"),
+#------------------------------
+                    font=dict(color="#58A6FF", size=edge_font_size, family="monospace"),
                     bgcolor="#1E232B",
                     borderpad=2,
                     opacity=0.9
