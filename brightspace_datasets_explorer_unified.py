@@ -2247,7 +2247,14 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     help="Save a backup of the current schema state. Useful for comparisons or offline analysis.",
                     use_container_width=True
                 )
-
+#------------------------------
+            if st.button(
+                "🩺 Health Check",
+                use_container_width=True,
+                help="Validate stored schema against live D2L documentation."
+            ):
+                st.session_state['show_health_check'] = True
+                st.rerun()
         # dataset selection (when applicable)
         selected_datasets: List[str] = []
         if not df.empty and view in ["🗺️ Relationship Map", "⚡ SQL Builder"]:
