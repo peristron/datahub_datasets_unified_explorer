@@ -345,7 +345,7 @@ def init_session_state():
         'show_url_editor': False,
         'custom_urls': None
         #------------------------------
-        'show_health_check': False,
+        'show_health_check': False
     }
     for key, value in defaults.items():
         if key not in st.session_state:
