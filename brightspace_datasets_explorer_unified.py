@@ -1206,9 +1206,10 @@ def create_spring_graph(
                     opacity=0.9
                 ))
 
+#------------------------------
     edge_trace = go.Scatter(
         x=edge_x, y=edge_y,
-        line=dict(width=1.5, color='#666'),
+        line=dict(width=edge_thickness, color='#666'),
         hoverinfo='none',
         mode='lines'
     )
