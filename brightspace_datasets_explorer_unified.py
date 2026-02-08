@@ -509,9 +509,12 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
                 text = element.text.strip()
                 clean_text_lower = text.lower()
 
+#------------------------------
                 if any(x == clean_text_lower for x in IGNORE_HEADERS):
                     continue
-                if "returned fields" in clean_text_lower or "available filters" in clean_text_lower:
+                # substring check catches variants like "Returned Fields For Quizzes"
+                # that the exact match above would miss
+                if any(phrase in clean_text_lower for phrase in ["returned fields", "available filters"]):
                     continue
                 if clean_text_lower.startswith("about "):  # NEW: Ignore subheaders like "About Time Tracking" to prevent overwrite
                     continue
