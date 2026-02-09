@@ -774,11 +774,12 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     # CRITICAL FIX: The Logic must allow a column to be a FK if:
     # A) It is explicitly marked is_foreign_key=True (even if is_primary_key is also True)
     # B) OR It is NOT a primary key (standard FK)
-    potential_fks = df[
-        (df['column_name'].isin(pk_names)) & 
+#------------------------------
+    potential_fks = extract_df[
+        (extract_df['column_name'].isin(pk_names)) & 
         (
-            (df['is_primary_key'] == False) | 
-            (df['is_foreign_key'] == True)
+            (extract_df['is_primary_key'] == False) | 
+            (extract_df['is_foreign_key'] == True)
         )
     ].copy()
     
