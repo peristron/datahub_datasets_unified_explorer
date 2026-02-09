@@ -659,13 +659,19 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
 
     # clean up text - title case for readability
 #------------------------------
+#------------------------------
     df['dataset_name'] = df['dataset_name'].astype(str).apply(smart_title)
     df['category'] = df['category'].astype(str).apply(smart_title)
 
-#------------------------------
+    # tag dataset type: reports (Advanced Data Sets) vs extracts (everything else)
+    df['dataset_type'] = df['category'].apply(
+        lambda c: 'report' if 'advanced' in str(c).lower() else 'extract'
+    )
+
     # ensure expected columns exist
     expected_cols = ['category', 'dataset_name', 'dataset_description', 'column_name',
-                     'data_type', 'description', 'key', 'url', 'version_history', 'is_nullable']
+                     'data_type', 'description', 'key', 'url', 'version_history',
+                     'is_nullable', 'dataset_type']
     for col in expected_cols:
         if col not in df.columns:
             df[col] = ''
