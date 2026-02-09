@@ -3167,8 +3167,34 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
                 with st.expander("📋 View Relationships Table"):
                     st.info("No direct joins found between these specific datasets.")
 
+#------------------------------
     elif graph_type == "Orbital Map (Galaxy)":
         st.caption("Categories are shown as golden suns, datasets orbit around their category.")
+
+        with st.expander("🛠️ Graph Settings", expanded=False):
+            col_o1, col_o2, col_o3 = st.columns(3)
+            with col_o1:
+                orbital_height = st.slider("Graph Height", 400, 1200, 700, key="orbital_height")
+                orbital_line_width = st.slider(
+                    "Connection Line Width", 0.5, 6.0, 2.0, step=0.5,
+                    key="orbital_line_width",
+                    help="Thickness of connection lines between datasets."
+                )
+            with col_o2:
+                orbital_cat_font = st.slider(
+                    "Category Label Size", 6, 24, 10, key="orbital_cat_font",
+                    help="Font size for category names."
+                )
+                orbital_node_scale = st.slider(
+                    "Node Size Scale", 0.5, 3.0, 1.0, step=0.25,
+                    key="orbital_node_scale",
+                    help="Multiplier for all node sizes."
+                )
+            with col_o3:
+                orbital_legend_font = st.slider(
+                    "Legend Font Size", 8, 20, 12, key="orbital_legend_font",
+                    help="Font size for key names in the legend."
+                )
 
         all_ds = sorted(df['dataset_name'].unique())
 
