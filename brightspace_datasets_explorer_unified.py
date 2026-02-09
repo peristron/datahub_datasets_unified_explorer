@@ -2186,6 +2186,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Convert T-SQL ↔ Postgres",
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
+#------------------------------
+                "Full Schema in 3D",
                 "Ask questions about data"
             ]
 
