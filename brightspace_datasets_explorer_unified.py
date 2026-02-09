@@ -5570,6 +5570,9 @@ def main():
 #------------------------------
     elif view == "✨ Schema Diff":
         render_schema_diff(df)
+#------------------------------
+    elif view == "🌐 3D Explorer":
+        render_3d_explorer(df)
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)
 
