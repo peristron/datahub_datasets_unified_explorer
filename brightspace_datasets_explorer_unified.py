@@ -760,7 +760,8 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
                 
                 if not already_exists:
                     # Add it to the PKs list manually
-                    row = df[mask].iloc[0].to_dict()
+#------------------------------
+                    row = extract_df[mask].iloc[0].to_dict()
                     row['is_primary_key'] = True
                     pks = pd.concat([pks, pd.DataFrame([row])], ignore_index=True)
 
