@@ -1336,8 +1336,11 @@ def create_spring_graph(
         )
     )
 
+#------------------------------
     return fig
-    
+
+
+@st.cache_data
 def create_orbital_map(df_hash: str, df: pd.DataFrame,
                        target_node: str = None, filter_keys: tuple = None) -> go.Figure:
     """
