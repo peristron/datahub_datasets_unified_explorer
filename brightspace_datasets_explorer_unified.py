@@ -5128,6 +5128,7 @@ def render_3d_explorer(df: pd.DataFrame):
     else:
         available_ds = sorted(df['dataset_name'].unique())
 
+#------------------------------
     with col_filter_ds:
         selected_ds = st.multiselect(
             "Filter by Dataset",
@@ -5136,6 +5137,21 @@ def render_3d_explorer(df: pd.DataFrame):
             key="3d_datasets",
             placeholder="All datasets shown (select to focus)...",
             help="Select specific datasets to focus on. Leave empty to show all within selected categories."
+        )
+
+    # dataset mode toggle (only shown when datasets are selected)
+    ds_mode = 'focus'
+    if selected_ds:
+        ds_mode = st.radio(
+            "Dataset View Mode",
+            ["focus", "discovery"],
+            format_func=lambda x: "🎯 Focus (selected only)" if x == "focus" else "🔭 Discovery (with neighbors)",
+            horizontal=True,
+            key="3d_ds_mode",
+            help=(
+                "**Focus:** Shows only connections between your selected datasets. "
+                "**Discovery:** Also shows datasets your selection connects to."
+            )
         )
 
     if not selected_cats:
@@ -5147,7 +5163,7 @@ def render_3d_explorer(df: pd.DataFrame):
     safe_cats = tuple(sorted(selected_cats))
     safe_ds = tuple(sorted(selected_ds)) if selected_ds else None
 
-    layout_data = compute_3d_layout(df_hash, df, safe_cats, show_all, safe_ds)
+    layout_data = compute_3d_layout(df_hash, df, safe_cats, show_all, safe_ds, ds_mode)
 
     positions = layout_data['positions']
     edges = layout_data['edges']
