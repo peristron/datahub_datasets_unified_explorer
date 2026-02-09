@@ -3232,8 +3232,39 @@ def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
 
         col_map, col_details = st.columns([3, 1])
 
+#------------------------------
         with col_map:
             fig = get_orbital_map(df, target_val, active_keys_filter)
+
+            # apply visual overrides post-cache
+            # 1. Scale node sizes
+            for trace in fig.data:
+                if hasattr(trace, 'marker') and trace.marker is not None:
+                    if trace.marker.size is not None:
+                        sizes = trace.marker.size
+                        if isinstance(sizes, (list, tuple)):
+                            trace.marker.size = [s * orbital_node_scale for s in sizes]
+                        elif isinstance(sizes, (int, float)):
+                            trace.marker.size = sizes * orbital_node_scale
+
+                # 2. Scale connection line widths
+                if hasattr(trace, 'line') and trace.line is not None:
+                    if trace.line.width is not None:
+                        trace.line.width = orbital_line_width
+
+                # 3. Scale category label font
+                if hasattr(trace, 'textfont') and trace.textfont is not None:
+                    if trace.textfont.color == 'gold':
+                        trace.textfont.size = orbital_cat_font
+
+            # 4. Scale legend font and graph height
+            fig.update_layout(
+                height=orbital_height,
+                legend=dict(
+                    font=dict(size=orbital_legend_font)
+                )
+            )
+
             st.plotly_chart(fig, use_container_width=True)
 
             if active_keys_filter:
