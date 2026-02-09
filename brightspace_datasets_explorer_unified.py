@@ -2732,8 +2732,18 @@ that almost every other table links to.
 
     if is_advanced:
         st.divider()
+#------------------------------
         st.subheader("🛤️ Path Finder")
         st.caption("Find all valid join paths between two datasets.")
+
+        st.info(
+            "A **path** is a chain of JOINs connecting two datasets that don't directly share a key. "
+            "Each **hop** is one JOIN through an intermediate table. Shorter paths generally produce "
+            "cleaner queries with fewer potential data issues.\n\n"
+            "**Example:** `Quiz Attempts` → `Users` → `User Enrollments` is a 2-hop path, "
+            "joining through the `Users` table via `UserId`.",
+            icon="💡"
+        )
 
         all_ds = sorted(df['dataset_name'].unique())
 
