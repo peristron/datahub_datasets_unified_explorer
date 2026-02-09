@@ -5474,9 +5474,27 @@ def render_3d_explorer(df: pd.DataFrame):
 #------------------------------
 def render_udf_flattener(df: pd.DataFrame):
     """renders the EAV pivot tool for user defined fields."""
+#------------------------------
     st.header("🔧 UDF Flattener")
 
-    st.markdown("Transform 'vertical' custom data lists into standard 'horizontal' tables.")
+    st.markdown(
+        "Transform 'vertical' custom data lists into standard 'horizontal' tables. "
+        "This is commonly needed for **User Defined Fields (UDFs)** — custom attributes "
+        "that your institution adds to users, courses, or org units."
+    )
+
+    st.info(
+        "**What is this for?**\n\n"
+        "Many Brightspace instances store custom data (e.g., Pronouns, Department, Start Date) "
+        "in an [Entity-Attribute-Value (EAV)](https://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model) pattern, "
+        "where each custom field is a **row** rather than a **column**. "
+        "This makes the data hard to query directly.\n\n"
+        "This tool generates the SQL `PIVOT` logic to convert those rows into proper columns, "
+        "so a query like `SELECT UserId, Department, Pronouns FROM ...` becomes possible.\n\n"
+        "**You'll need:** Your specific Field IDs or Field Names from your database — "
+        "see the guide below for how to find them.",
+        icon="💡"
+    )
 
     with st.expander("ℹ️ How to use & Where to find Field IDs", expanded=True):
         c_concept, c_action = st.columns([1, 1])
