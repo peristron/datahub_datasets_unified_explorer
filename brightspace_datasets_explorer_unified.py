@@ -5080,15 +5080,37 @@ def render_3d_explorer(df: pd.DataFrame):
                 help="Include orphan datasets and reports that have no join relationships."
             )
 
-    # category filter
-    all_cats = sorted(df['category'].unique())
-    selected_cats = st.multiselect(
-        "Filter by Category",
-        all_cats,
-        default=all_cats,
-        key="3d_categories",
-        help="Limit the graph to specific categories. Remove categories to reduce clutter."
-    )
+#------------------------------
+    # filters
+    col_filter_cat, col_filter_ds = st.columns(2)
+
+    with col_filter_cat:
+        all_cats = sorted(df['category'].unique())
+        selected_cats = st.multiselect(
+            "Filter by Category",
+            all_cats,
+            default=all_cats,
+            key="3d_categories",
+            help="Limit the graph to specific categories. Remove categories to reduce clutter."
+        )
+
+    # narrow dataset list based on selected categories
+    if selected_cats:
+        available_ds = sorted(
+            df[df['category'].isin(selected_cats)]['dataset_name'].unique()
+        )
+    else:
+        available_ds = sorted(df['dataset_name'].unique())
+
+    with col_filter_ds:
+        selected_ds = st.multiselect(
+            "Filter by Dataset",
+            available_ds,
+            default=[],
+            key="3d_datasets",
+            placeholder="All datasets shown (select to focus)...",
+            help="Select specific datasets to focus on. Leave empty to show all within selected categories."
+        )
 
     if not selected_cats:
         st.warning("Select at least one category to display.")
@@ -5097,8 +5119,9 @@ def render_3d_explorer(df: pd.DataFrame):
     # compute layout (cached)
     df_hash = f"{len(df)}_{df['dataset_name'].nunique()}"
     safe_cats = tuple(sorted(selected_cats))
+    safe_ds = tuple(sorted(selected_ds)) if selected_ds else None
 
-    layout_data = compute_3d_layout(df_hash, df, safe_cats, show_all)
+    layout_data = compute_3d_layout(df_hash, df, safe_cats, show_all, safe_ds)
 
     positions = layout_data['positions']
     edges = layout_data['edges']
