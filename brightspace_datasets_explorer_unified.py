@@ -709,12 +709,24 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     2. Allows columns to be Sources if they are marked as FKs, even if they are also PKs.
     3. Handles Synonym/Alias matching.
     """
+#------------------------------
     if df.empty:
+        return pd.DataFrame()
+
+    # Filter to extracts only — Advanced Data Sets (reports) are pre-joined
+    # and should not participate in the relationship graph.
+    # If 'dataset_type' column is missing (old CSV), treat everything as extract.
+    if 'dataset_type' in df.columns:
+        extract_df = df[df['dataset_type'] != 'report']
+    else:
+        extract_df = df
+
+    if extract_df.empty:
         return pd.DataFrame()
 
     # 1. Identify definitive Primary Keys (Targets) from Scrape Data
     # We create a copy so we can inject implicit keys without altering the main df
-    pks = df[df['is_primary_key'] == True].copy()
+    pks = extract_df[extract_df['is_primary_key'] == True].copy()
     
     # --- SAFETY NET: HARDCODED / IMPLICIT PRIMARY KEYS ---
     # This ensures that even if the scraper misses the "PK" flag in the docs (common for Hubs),
