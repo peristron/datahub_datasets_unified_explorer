@@ -4974,11 +4974,13 @@ def render_health_check(df: pd.DataFrame):
 
 #------------------------------
 #------------------------------
+#------------------------------
 @st.cache_data
 def compute_3d_layout(df_hash: str, df: pd.DataFrame,
                       selected_categories: tuple = None,
                       show_all: bool = False,
-                      selected_datasets: tuple = None) -> dict:
+                      selected_datasets: tuple = None,
+                      ds_mode: str = 'focus') -> dict:
     """computes cached 3D spring layout for the dataset relationship graph."""
     joins = get_joins(df)
 
