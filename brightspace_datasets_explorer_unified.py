@@ -3667,11 +3667,18 @@ def render_schema_browser(df: pd.DataFrame):
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the sql builder interface with python/pandas support."""
+#------------------------------
     st.header("⚡ Query Builder")
 
-    if not selected_datasets:
-        st.info("👈 Select 2 or more datasets from the sidebar to generate code.")
+    st.info(
+        "The builder analyzes PK/FK relationships between your selected datasets and generates "
+        "deterministic JOIN queries. It supports composite keys, alias resolution "
+        "(e.g., `SubmitterId` → `UserId`), and sibling joins through shared dimensions like `OrgUnitId`.\n\n"
+        "Select **2 or more datasets** from the sidebar or use Quick Select below.",
+        icon="💡"
+    )
 
+    if not selected_datasets:
         st.subheader("Quick Select")
         all_ds = sorted(df['dataset_name'].unique())
         quick_select = st.multiselect(
