@@ -750,7 +750,8 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     for ds_name, cols in IMPLICIT_PKS.items():
         for col in cols:
             # Check if this dataset+column exists in the loaded data
-            mask = (df['dataset_name'] == ds_name) & (df['column_name'] == col)
+#------------------------------
+            mask = (extract_df['dataset_name'] == ds_name) & (extract_df['column_name'] == col)
             if mask.any():
                 # Check if it's already in our pks list
                 already_exists = not pks[
