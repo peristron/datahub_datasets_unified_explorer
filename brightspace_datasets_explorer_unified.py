@@ -5248,50 +5248,148 @@ def render_3d_explorer(df: pd.DataFrame):
             cat_nodes[cat] = []
         cat_nodes[cat].append(node)
 
-    for cat in sorted(cat_nodes.keys()):
-        nodes = cat_nodes[cat]
-        color = cat_colors.get(cat, '#ccc')
+#------------------------------
+    # determine if we're in detailed focus mode (small dataset count)
+    is_detailed_focus = selected_ds and ds_mode == 'focus' and len(positions) <= 15
 
-        nx_list, ny_list, nz_list = [], [], []
-        sizes = []
-        hover_texts = []
+    if is_detailed_focus:
+        # DETAILED MODE: one trace per dataset for granular legend
 
-        for node in nodes:
+        # build edge color map — assign a color to each join key
+        all_keys_in_view = set()
+        for edge in edges:
+            for k in edge['keys']:
+                all_keys_in_view.add(k)
+        sorted_keys = sorted(all_keys_in_view)
+
+        key_palette = [
+            "#58A6FF", "#FF6B6B", "#69DB7C", "#FFD43B", "#CC5DE8",
+            "#20C997", "#FF922B", "#339AF0", "#F06595", "#A9E34B"
+        ]
+        key_colors = {k: key_palette[i % len(key_palette)] for i, k in enumerate(sorted_keys)}
+
+        # redraw edges with per-key coloring
+        traces.clear()
+
+        for key_name in sorted_keys:
+            ex, ey, ez = [], [], []
+
+            for edge in edges:
+                if key_name in edge['keys']:
+                    src = edge['source']
+                    tgt = edge['target']
+                    if src in positions and tgt in positions:
+                        x0, y0, z0 = positions[src]
+                        x1, y1, z1 = positions[tgt]
+                        ex.extend([x0, x1, None])
+                        ey.extend([y0, y1, None])
+                        ez.extend([z0, z1, None])
+
+            if ex:
+                traces.append(go.Scatter3d(
+                    x=ex, y=ey, z=ez,
+                    mode='lines',
+                    name=f"🔑 {key_name}",
+                    line=dict(
+                        width=edge_width + 1,
+                        color=key_colors[key_name]
+                    ),
+                    hoverinfo='name',
+                    showlegend=True
+                ))
+
+        # draw one trace per dataset
+        for node, info in sorted(node_info.items()):
             x, y, z = positions[node]
-            nx_list.append(x)
-            ny_list.append(y)
-            nz_list.append(z)
-
-            info = node_info[node]
+            cat = info['category']
             degree = info['degree']
             ds_type = info.get('dataset_type', 'extract')
+            color = cat_colors.get(cat, '#ccc')
 
-            base_size = 4
-            scaled = base_size + min(degree * 2, 16)
-            sizes.append(scaled * node_scale)
+            base_size = 8
+            scaled = base_size + min(degree * 3, 20)
+
+            # build column list for hover
+            node_cols = df[df['dataset_name'] == node]['column_name'].tolist()
+            col_preview = ', '.join(node_cols[:10])
+            if len(node_cols) > 10:
+                col_preview += f"... (+{len(node_cols) - 10} more)"
 
             type_label = "📊 Report" if ds_type == 'report' else "📦 Extract"
-            hover_texts.append(
+
+            hover_text = (
                 f"<b>{node}</b><br>"
                 f"Category: {cat}<br>"
                 f"Type: {type_label}<br>"
-                f"Connections: {degree}"
+                f"Connections: {degree}<br>"
+                f"Columns ({len(node_cols)}): {col_preview}"
             )
 
-        traces.append(go.Scatter3d(
-            x=nx_list, y=ny_list, z=nz_list,
-            mode='markers',
-            name=cat,
-            marker=dict(
-                size=sizes,
-                color=color,
-                line=dict(width=0.5, color='rgba(255,255,255,0.3)'),
-                opacity=0.9
-            ),
-            text=hover_texts,
-            hoverinfo='text',
-            showlegend=True
-        ))
+            traces.append(go.Scatter3d(
+                x=[x], y=[y], z=[z],
+                mode='markers+text',
+                name=f"📦 {node}",
+                text=[node],
+                textposition='top center',
+                textfont=dict(size=10, color='white'),
+                marker=dict(
+                    size=scaled * node_scale,
+                    color=color,
+                    line=dict(width=2, color='white'),
+                    opacity=0.95,
+                    symbol='diamond'
+                ),
+                hoverinfo='text',
+                hovertext=[hover_text],
+                showlegend=True
+            ))
+
+    else:
+        # STANDARD MODE: one trace per category (unchanged)
+        for cat in sorted(cat_nodes.keys()):
+            nodes = cat_nodes[cat]
+            color = cat_colors.get(cat, '#ccc')
+
+            nx_list, ny_list, nz_list = [], [], []
+            sizes = []
+            hover_texts = []
+
+            for node in nodes:
+                x, y, z = positions[node]
+                nx_list.append(x)
+                ny_list.append(y)
+                nz_list.append(z)
+
+                info = node_info[node]
+                degree = info['degree']
+                ds_type = info.get('dataset_type', 'extract')
+
+                base_size = 4
+                scaled = base_size + min(degree * 2, 16)
+                sizes.append(scaled * node_scale)
+
+                type_label = "📊 Report" if ds_type == 'report' else "📦 Extract"
+                hover_texts.append(
+                    f"<b>{node}</b><br>"
+                    f"Category: {cat}<br>"
+                    f"Type: {type_label}<br>"
+                    f"Connections: {degree}"
+                )
+
+            traces.append(go.Scatter3d(
+                x=nx_list, y=ny_list, z=nz_list,
+                mode='markers',
+                name=cat,
+                marker=dict(
+                    size=sizes,
+                    color=color,
+                    line=dict(width=0.5, color='rgba(255,255,255,0.3)'),
+                    opacity=0.9
+                ),
+                text=hover_texts,
+                hoverinfo='text',
+                showlegend=True
+            ))
 
     # build figure
     fig = go.Figure(
