@@ -4973,10 +4973,12 @@ def render_health_check(df: pd.DataFrame):
         st.rerun()
 
 #------------------------------
+#------------------------------
 @st.cache_data
 def compute_3d_layout(df_hash: str, df: pd.DataFrame,
                       selected_categories: tuple = None,
-                      show_all: bool = False) -> dict:
+                      show_all: bool = False,
+                      selected_datasets: tuple = None) -> dict:
     """computes cached 3D spring layout for the dataset relationship graph."""
     joins = get_joins(df)
 
@@ -4987,6 +4989,23 @@ def compute_3d_layout(df_hash: str, df: pd.DataFrame,
         valid_ds = set(df[df['category'].isin(selected_categories)]['dataset_name'].unique())
     else:
         valid_ds = set(df['dataset_name'].unique())
+
+    # further narrow to specific datasets if selected
+    if selected_datasets:
+        focus_set = set(selected_datasets)
+
+        # include focus datasets plus their direct neighbors for context
+        neighbor_ds = set()
+        if not joins.empty:
+            for _, r in joins.iterrows():
+                src = r['dataset_name_fk']
+                tgt = r['dataset_name_pk']
+                if src in focus_set and tgt in valid_ds:
+                    neighbor_ds.add(tgt)
+                if tgt in focus_set and src in valid_ds:
+                    neighbor_ds.add(src)
+
+        valid_ds = (focus_set | neighbor_ds) & valid_ds
 
     # add edges from joins (filtered by category)
     if not joins.empty:
