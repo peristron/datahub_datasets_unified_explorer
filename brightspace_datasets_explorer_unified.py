@@ -4239,8 +4239,18 @@ def generate_ddl(df: pd.DataFrame, dataset_name: str, dialect: str = "T-SQL") ->
 
 def render_kpi_recipes(df: pd.DataFrame):
     """renders the cookbook of sql recipes."""
+#------------------------------
     st.header("📚 KPI Recipes")
     st.markdown("Pre-packaged SQL queries for common educational analysis questions.")
+
+    st.info(
+        "These are ready-to-use SQL templates for common reporting questions. "
+        "Each recipe targets specific datasets — look for ✅/❌ indicators to confirm "
+        "availability in your schema.\n\n"
+        "**How to use:** Select a category below, choose your SQL dialect, then copy or download the query. "
+        "Adapt the `WHERE` clauses and column selections to match your institution's needs.",
+        icon="💡"
+    )
 
     all_cats = list(RECIPE_REGISTRY.keys())
     selected_cat = st.radio(
