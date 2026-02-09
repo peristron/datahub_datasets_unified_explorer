@@ -2173,6 +2173,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "🔀 SQL Translator",
                 "🔧 UDF Flattener",
                 "✨ Schema Diff",
+#------------------------------
+                "🌐 3D Explorer",
                 "🤖 AI Assistant"
             ]
             captions = [
