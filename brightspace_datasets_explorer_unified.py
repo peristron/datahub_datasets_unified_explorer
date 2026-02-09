@@ -2455,7 +2455,7 @@ def render_dashboard(df: pd.DataFrame):
     with st.expander("ℹ️ How to use this application", expanded=False):
         st.markdown("""
 **Welcome to the Brightspace Dataset Explorer**  
-This tool is a Rosetta Stone for the D2L Data Hub — helping you navigate schemas, understand relationships, and build queries across an ever-growing landscape of datasets.
+This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — helping you navigate schemas, understand relationships, and build queries across an ever-growing landscape of datasets.
 
 ---
 
