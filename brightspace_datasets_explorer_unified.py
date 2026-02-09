@@ -4972,6 +4972,341 @@ def render_health_check(df: pd.DataFrame):
         st.session_state['show_health_check'] = False
         st.rerun()
 
+#------------------------------
+@st.cache_data
+def compute_3d_layout(df_hash: str, df: pd.DataFrame,
+                      selected_categories: tuple = None,
+                      show_all: bool = False) -> dict:
+    """computes cached 3D spring layout for the dataset relationship graph."""
+    joins = get_joins(df)
+
+    G = nx.Graph()
+
+    # determine which datasets are eligible based on category filter
+    if selected_categories:
+        valid_ds = set(df[df['category'].isin(selected_categories)]['dataset_name'].unique())
+    else:
+        valid_ds = set(df['dataset_name'].unique())
+
+    # add edges from joins (filtered by category)
+    if not joins.empty:
+        for _, r in joins.iterrows():
+            src = r['dataset_name_fk']
+            tgt = r['dataset_name_pk']
+            key = r['column_name']
+
+            if src in valid_ds and tgt in valid_ds:
+                if G.has_edge(src, tgt):
+                    G[src][tgt]['keys'].append(key)
+                else:
+                    G.add_edge(src, tgt, keys=[key])
+
+    # optionally add disconnected nodes (orphans, reports)
+    if show_all:
+        for ds in valid_ds:
+            if not G.has_node(ds):
+                G.add_node(ds)
+
+    if G.number_of_nodes() == 0:
+        return {'positions': {}, 'edges': [], 'node_info': {}}
+
+    # compute 3D spring layout (seed for determinism)
+    pos = nx.spring_layout(G, dim=3, k=2.0, iterations=50, seed=42)
+
+    # build node info
+    node_info = {}
+    for node in G.nodes():
+        subset = df[df['dataset_name'] == node]
+        cat = subset['category'].iloc[0] if not subset.empty else 'unknown'
+        ds_type = 'extract'
+        if 'dataset_type' in subset.columns and not subset.empty:
+            ds_type = subset['dataset_type'].iloc[0]
+        node_info[node] = {
+            'category': cat,
+            'degree': G.degree(node),
+            'dataset_type': ds_type
+        }
+
+    # build edge list
+    edge_data = []
+    for u, v, data in G.edges(data=True):
+        edge_data.append({
+            'source': u,
+            'target': v,
+            'keys': data.get('keys', [])
+        })
+
+    return {
+        'positions': {k: [float(c) for c in v] for k, v in pos.items()},
+        'edges': edge_data,
+        'node_info': node_info
+    }
+
+
+def render_3d_explorer(df: pd.DataFrame):
+    """renders the interactive 3D schema visualization."""
+    st.header("🌐 3D Schema Explorer")
+    st.caption(
+        "Interactive 3D visualization of all dataset relationships. "
+        "Drag to rotate, scroll to zoom, right-drag to pan."
+    )
+
+    # controls
+    with st.expander("🛠️ Settings", expanded=False):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            graph_height = st.slider(
+                "Graph Height", 500, 1200, 800, key="3d_height"
+            )
+            node_scale = st.slider(
+                "Node Scale", 0.5, 3.0, 1.0, step=0.25, key="3d_node_scale",
+                help="Multiplier for all node sizes."
+            )
+
+        with col2:
+            edge_width = st.slider(
+                "Edge Width", 0.5, 5.0, 1.5, step=0.5, key="3d_edge_width",
+                help="Thickness of connection lines."
+            )
+            edge_opacity = st.slider(
+                "Edge Opacity", 0.1, 1.0, 0.3, step=0.1, key="3d_edge_opacity",
+                help="Transparency of connection lines."
+            )
+
+        with col3:
+            show_all = st.checkbox(
+                "Show Disconnected Datasets", False, key="3d_show_all",
+                help="Include orphan datasets and reports that have no join relationships."
+            )
+
+    # category filter
+    all_cats = sorted(df['category'].unique())
+    selected_cats = st.multiselect(
+        "Filter by Category",
+        all_cats,
+        default=all_cats,
+        key="3d_categories",
+        help="Limit the graph to specific categories. Remove categories to reduce clutter."
+    )
+
+    if not selected_cats:
+        st.warning("Select at least one category to display.")
+        return
+
+    # compute layout (cached)
+    df_hash = f"{len(df)}_{df['dataset_name'].nunique()}"
+    safe_cats = tuple(sorted(selected_cats))
+
+    layout_data = compute_3d_layout(df_hash, df, safe_cats, show_all)
+
+    positions = layout_data['positions']
+    edges = layout_data['edges']
+    node_info = layout_data['node_info']
+
+    if not positions:
+        st.warning("No datasets to display with current filters.")
+        return
+
+    # build traces
+    categories_in_graph = list(set(info['category'] for info in node_info.values()))
+    cat_colors = get_category_colors(categories_in_graph)
+
+    traces = []
+
+    # 1. edge lines
+    edge_x, edge_y, edge_z = [], [], []
+
+    for edge in edges:
+        src = edge['source']
+        tgt = edge['target']
+
+        if src in positions and tgt in positions:
+            x0, y0, z0 = positions[src]
+            x1, y1, z1 = positions[tgt]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+            edge_z.extend([z0, z1, None])
+
+    if edge_x:
+        traces.append(go.Scatter3d(
+            x=edge_x, y=edge_y, z=edge_z,
+            mode='lines',
+            line=dict(
+                width=edge_width,
+                color=f'rgba(150,150,150,{edge_opacity})'
+            ),
+            hoverinfo='none',
+            showlegend=False
+        ))
+
+    # 2. edge midpoint hover markers (show join keys on hover)
+    if edges:
+        mid_x, mid_y, mid_z = [], [], []
+        mid_hover = []
+
+        for edge in edges:
+            src = edge['source']
+            tgt = edge['target']
+            keys = edge['keys']
+
+            if src in positions and tgt in positions:
+                x0, y0, z0 = positions[src]
+                x1, y1, z1 = positions[tgt]
+                mid_x.append((x0 + x1) / 2)
+                mid_y.append((y0 + y1) / 2)
+                mid_z.append((z0 + z1) / 2)
+                mid_hover.append(
+                    f"<b>{src}</b> ↔ <b>{tgt}</b><br>"
+                    f"Keys: {', '.join(keys)}"
+                )
+
+        if mid_x:
+            traces.append(go.Scatter3d(
+                x=mid_x, y=mid_y, z=mid_z,
+                mode='markers',
+                marker=dict(
+                    size=2,
+                    color='rgba(88,166,255,0.5)',
+                    symbol='diamond'
+                ),
+                text=mid_hover,
+                hoverinfo='text',
+                showlegend=False
+            ))
+
+    # 3. node traces (one per category for legend)
+    cat_nodes = {}
+    for node, info in node_info.items():
+        cat = info['category']
+        if cat not in cat_nodes:
+            cat_nodes[cat] = []
+        cat_nodes[cat].append(node)
+
+    for cat in sorted(cat_nodes.keys()):
+        nodes = cat_nodes[cat]
+        color = cat_colors.get(cat, '#ccc')
+
+        nx_list, ny_list, nz_list = [], [], []
+        sizes = []
+        hover_texts = []
+
+        for node in nodes:
+            x, y, z = positions[node]
+            nx_list.append(x)
+            ny_list.append(y)
+            nz_list.append(z)
+
+            info = node_info[node]
+            degree = info['degree']
+            ds_type = info.get('dataset_type', 'extract')
+
+            base_size = 4
+            scaled = base_size + min(degree * 2, 16)
+            sizes.append(scaled * node_scale)
+
+            type_label = "📊 Report" if ds_type == 'report' else "📦 Extract"
+            hover_texts.append(
+                f"<b>{node}</b><br>"
+                f"Category: {cat}<br>"
+                f"Type: {type_label}<br>"
+                f"Connections: {degree}"
+            )
+
+        traces.append(go.Scatter3d(
+            x=nx_list, y=ny_list, z=nz_list,
+            mode='markers',
+            name=cat,
+            marker=dict(
+                size=sizes,
+                color=color,
+                line=dict(width=0.5, color='rgba(255,255,255,0.3)'),
+                opacity=0.9
+            ),
+            text=hover_texts,
+            hoverinfo='text',
+            showlegend=True
+        ))
+
+    # build figure
+    fig = go.Figure(
+        data=traces,
+        layout=go.Layout(
+            showlegend=True,
+            legend=dict(
+                title=dict(text="Categories", font=dict(color='#8B949E', size=12)),
+                font=dict(color='#C9D1D9', size=11),
+                bgcolor='rgba(30, 35, 43, 0.85)',
+                bordercolor='#30363D',
+                borderwidth=1
+            ),
+            scene=dict(
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                zaxis=dict(visible=False),
+                bgcolor='#0E1117'
+            ),
+            margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor='#0E1117',
+            height=graph_height
+        )
+    )
+
+    config = {
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'brightspace_3d_schema',
+            'height': 1200,
+            'width': 1600,
+            'scale': 2
+        }
+    }
+
+    st.plotly_chart(fig, use_container_width=True, config=config)
+
+    # summary stats
+    st.divider()
+
+    total_nodes = len(positions)
+    total_edges = len(edges)
+    connected_nodes = sum(1 for info in node_info.values() if info['degree'] > 0)
+    isolated_nodes = total_nodes - connected_nodes
+
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+    col_s1.metric("Datasets Shown", total_nodes)
+    col_s2.metric("Connections", total_edges)
+    col_s3.metric("Connected", connected_nodes)
+    col_s4.metric("Isolated", isolated_nodes)
+
+    # dataset details table
+    with st.expander("📋 Dataset Details", expanded=False):
+        detail_data = []
+        for node, info in sorted(node_info.items()):
+            detail_data.append({
+                "Dataset": node,
+                "Category": info['category'],
+                "Type": info['dataset_type'],
+                "Connections": info['degree']
+            })
+
+        detail_df = pd.DataFrame(detail_data).sort_values(
+            "Connections", ascending=False
+        )
+
+        st.dataframe(
+            detail_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Connections": st.column_config.ProgressColumn(
+                    "Connections",
+                    format="%d",
+                    min_value=0,
+                    max_value=int(detail_df['Connections'].max()) if not detail_df.empty else 1
+                )
+            }
+        )
+
 
 #------------------------------
 def render_udf_flattener(df: pd.DataFrame):
