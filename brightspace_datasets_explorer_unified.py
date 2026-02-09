@@ -812,11 +812,12 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
 
     alias_joins = pd.DataFrame()
     for alias_col, (target_pk, hub_dataset) in alias_map.items():
-        alias_candidates = df[
-            (df['column_name'] == alias_col) & 
+#------------------------------
+        alias_candidates = extract_df[
+            (extract_df['column_name'] == alias_col) & 
             (
-                (df['is_primary_key'] == False) | 
-                (df['is_foreign_key'] == True)
+                (extract_df['is_primary_key'] == False) | 
+                (extract_df['is_foreign_key'] == True)
             )
         ]
         
