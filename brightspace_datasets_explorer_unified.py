@@ -4990,22 +4990,27 @@ def compute_3d_layout(df_hash: str, df: pd.DataFrame,
     else:
         valid_ds = set(df['dataset_name'].unique())
 
+#------------------------------
     # further narrow to specific datasets if selected
     if selected_datasets:
         focus_set = set(selected_datasets)
 
-        # include focus datasets plus their direct neighbors for context
-        neighbor_ds = set()
-        if not joins.empty:
-            for _, r in joins.iterrows():
-                src = r['dataset_name_fk']
-                tgt = r['dataset_name_pk']
-                if src in focus_set and tgt in valid_ds:
-                    neighbor_ds.add(tgt)
-                if tgt in focus_set and src in valid_ds:
-                    neighbor_ds.add(src)
+        if ds_mode == 'focus':
+            # strict: only show selected datasets and edges between them
+            valid_ds = focus_set & valid_ds
+        else:
+            # discovery: include direct neighbors for context
+            neighbor_ds = set()
+            if not joins.empty:
+                for _, r in joins.iterrows():
+                    src = r['dataset_name_fk']
+                    tgt = r['dataset_name_pk']
+                    if src in focus_set and tgt in valid_ds:
+                        neighbor_ds.add(tgt)
+                    if tgt in focus_set and src in valid_ds:
+                        neighbor_ds.add(src)
 
-        valid_ds = (focus_set | neighbor_ds) & valid_ds
+            valid_ds = (focus_set | neighbor_ds) & valid_ds
 
     # add edges from joins (filtered by category)
     if not joins.empty:
