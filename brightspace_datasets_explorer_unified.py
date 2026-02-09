@@ -3794,9 +3794,19 @@ def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
 
 def render_sql_translator():
     """renders the sql dialect translation tool."""
+#------------------------------
     st.header("🔀 SQL Dialect Translator")
     st.markdown(
         "Convert queries between dialects (e.g., T-SQL to PostgreSQL) or to Python/Pandas."
+    )
+
+    st.info(
+        "Use this when migrating queries between database platforms (e.g., SQL Server to Snowflake) "
+        "or when converting SQL to Python for local CSV analysis.\n\n"
+        "The AI engine handles function mappings (e.g., `GETDATE()` → `CURRENT_TIMESTAMP`), "
+        "syntax differences (`TOP` → `LIMIT`), and type casting variations. "
+        "Review the output before running in production — edge cases may require manual adjustment.",
+        icon="💡"
     )
 
     if not st.session_state['authenticated']:
