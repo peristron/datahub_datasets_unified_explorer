@@ -2863,11 +2863,21 @@ that almost every other table links to.
                                 use_container_width=True
                             )
 
+#------------------------------
                         if gen_sql_for_path:
                             sql_from_path = generate_sql_for_path(
                                 path, df, dialect=path_sql_dialect
                             )
                             st.code(sql_from_path, language="sql")
+                            
+                            # Quick download for convenience
+                            st.download_button(
+                                label="📥 Download SQL",
+                                data=sql_from_path,
+                                file_name=f"path_{'-'.join(path[:3])}_{path_sql_dialect.lower()}.sql",
+                                mime="application/sql",
+                                key=f"dl_sql_path_{i}"
+                            )
                                                     #------------
                         # generate pandas code for this path as well
                         st.markdown("#### Generate Pandas Code for This Path")
