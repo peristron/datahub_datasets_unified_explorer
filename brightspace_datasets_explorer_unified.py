@@ -5367,13 +5367,14 @@ def render_3d_explorer(df: pd.DataFrame):
                 f"Columns ({len(node_cols)}): {col_preview}"
             )
 
+#------------------------------
             traces.append(go.Scatter3d(
                 x=[x], y=[y], z=[z],
                 mode='markers+text',
                 name=f"📦 {node}",
                 text=[node],
                 textposition='top center',
-                textfont=dict(size=10, color='white'),
+                textfont=dict(size=label_font_size, color='white'),
                 marker=dict(
                     size=scaled * node_scale,
                     color=color,
