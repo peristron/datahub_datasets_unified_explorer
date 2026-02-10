@@ -4359,7 +4359,7 @@ def render_schema_diff(df: pd.DataFrame):
 
         with st.expander("ℹ️ How to use Schema Diff", expanded=True):
             st.markdown("""
-**Purpose:** Track how the Brightspace schema evolves over time.
+**Purpose:** Track how the Brightspace Datahub schema evolves over time.
 
 **Steps:**
 1. Download a backup using **💾 Download Metadata Backup** in the sidebar
@@ -4728,7 +4728,7 @@ def render_url_editor():
                 st.markdown(f"{i}. `{url}`")
 
 
-# =============================================================================
+# =========================================
 # 10. UDF Flattener (EAV → wide)
 # =============================================================================
 #------------------------------
@@ -4799,7 +4799,7 @@ def render_health_check(df: pd.DataFrame):
             f"{', '.join(ds_list)}"
         )
     else:
-        passes.append("✅ No suspect header-as-data columns detected.")
+        passes.append("✅ No suspect header-as-data columns detected")
 
     # 6. Datasets missing descriptions
     desc_col = 'dataset_description'
@@ -4814,7 +4814,7 @@ def render_health_check(df: pd.DataFrame):
                 f"have context descriptions."
             )
         else:
-            passes.append(f"✅ Description coverage: {has_desc}/{total_ds} datasets.")
+            passes.append(f"✅ Description coverage: {has_desc}/{total_ds} datasets")
 
     # Display offline results
     col_pass, col_issue = st.columns(2)
@@ -4826,15 +4826,15 @@ def render_health_check(df: pd.DataFrame):
             st.markdown(i)
 
     if not issues:
-        st.success("All offline checks passed!")
+        st.success("All offline checks passed")
 
     st.divider()
 
     # =============================================
-    # TIER 2: Online Validation (hits D2L pages)
+    # tier 2: online validation (hitting the D2L/community pages)
     # =============================================
     st.subheader("🌐 Online Validation")
-    st.caption("Re-scrapes a sample of pages and compares against stored data to detect drift.")
+    st.caption("Re-scrapes a sample of pages and compares against stored data to detect drift")
 
     urls_text = st.session_state.get('custom_urls') or DEFAULT_URLS
     all_urls = [u.strip() for u in urls_text.split('\n') if u.strip().startswith('http')]
