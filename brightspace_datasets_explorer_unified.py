@@ -5137,10 +5137,15 @@ def render_3d_explorer(df: pd.DataFrame):
                 help="Transparency of connection lines."
             )
 
+#------------------------------
         with col3:
             show_all = st.checkbox(
                 "Show Disconnected Datasets", False, key="3d_show_all",
                 help="Include orphan datasets and reports that have no join relationships."
+            )
+            label_font_size = st.slider(
+                "Label Font Size", 6, 24, 10, key="3d_label_font",
+                help="Font size for dataset name labels in Focus mode."
             )
 
 #------------------------------
