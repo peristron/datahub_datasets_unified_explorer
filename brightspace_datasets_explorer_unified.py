@@ -1193,13 +1193,7 @@ def create_spring_graph(
     # (Layout calculation and Plotly tracing remains exactly the same below...)
     pos = nx.spring_layout(G, k=node_separation, iterations=50)
     
-    # ... [Rest of function: edge_x, edge_y generation, node traces, etc. is unchanged] ...
-    
-    # Copy/Paste the rest of the original function logic here for drawing the traces
-    # For brevity in this diff, I assume the drawing logic below is preserved.
-    # Just ensure the G object passed to layout is the filtered one created above.
-    
-    # [Rest of function code...]
+    # .
     # build edge traces
     edge_x = []
     edge_y = []
