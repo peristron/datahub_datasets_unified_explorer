@@ -2409,6 +2409,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 if st.session_state['auth_error']:
                     st.error("Incorrect password.")
 
+#------------------------------
         # cross-links (advanced mode only)
         if is_advanced:
             st.divider()
@@ -2420,6 +2421,17 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 help=(
                     "An advanced NLP engine for unstructured data. "
                     "Use this to analyze Discussion Posts, Survey Comments, and Assignment Feedback."
+                )
+            )
+
+            # New: Roles & Permissions Exporter
+            st.link_button(
+                "🔐 Roles & Permissions Exporter",
+                "https://exporterforrolesandpermissions.streamlit.app/",
+                help=(
+                    "Specialized tool for exporting detailed role permission checklists. "
+                    "Ideal companion when working with the 'Role Details' dataset. "
+                    "Ask your TAM for the access code."
                 )
             )
 
