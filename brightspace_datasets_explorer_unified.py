@@ -2,7 +2,7 @@
 # =============================================================================
 # unified brightspace dataset explorer
 # combines the best of all three code-bases with simple/advanced modes
-# run: streamlit run unified_dataset_explorer.py
+# run: streamlit run brightspace_datasets_explorer_unified02092026.py
 # =============================================================================
 
 import streamlit as st
