@@ -2672,7 +2672,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
     )
 
     st.success(f"✅ Showing {len(ref_df)} datasets (hard-coded + any newly discovered)")
-    st.info("All available IDs are populated.")
+    st.info("All available IDs are populated; any gaps will be addressed at a later date.")
 
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
