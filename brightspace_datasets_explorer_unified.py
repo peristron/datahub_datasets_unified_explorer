@@ -2435,6 +2435,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 )
             )
 
+#------------------------------
             c_t1, c_t2 = st.columns(2)
             with c_t1:
                 st.link_button(
@@ -2449,6 +2450,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     help="Split large CSVs into smaller chunks."
                 )
 
+            # New: Dataset ID Reference for Power Users
+            if st.button("📋 Dataset ID Reference (Schema + Plugin IDs)", use_container_width=True):
+                render_dataset_id_reference()
     return view, selected_datasets
 
 
