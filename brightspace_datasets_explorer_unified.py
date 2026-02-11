@@ -5369,7 +5369,204 @@ def render_udf_flattener(df: pd.DataFrame):
 # =============================================================================
 # 11. main orchestrator
 # =============================================================================
+def render_dashboard(df: pd.DataFrame):
+    """Main dashboard view with metrics, search, hubs, orphans, etc."""
+    st.header("📊 Dashboard")
 
+    is_advanced = st.session_state['experience_mode'] == 'advanced'
+
+    # Top metrics
+    col1, col2, col3, col4 = st.columns(4)
+
+    total_datasets = df['dataset_name'].nunique() if 'dataset_name' in df.columns else 0
+    total_columns = len(df)
+    total_categories = df['category'].nunique() if 'category' in df.columns else 0
+
+    joins = get_joins(df)
+    total_relationships = len(joins) if not joins.empty else 0
+
+    col1.metric("Total Datasets", total_datasets)
+    col2.metric("Total Columns", f"{total_columns:,}")
+    col3.metric("Categories", total_categories)
+    col4.metric(
+        "Unique Joins",
+        total_relationships,
+        help="Total count of unique directional links (A → B) detected across the entire schema."
+    )
+
+    st.divider()
+
+    # Intelligent search
+    st.subheader("🔍 Intelligent Search")
+
+    all_datasets = sorted(df['dataset_name'].unique()) if 'dataset_name' in df.columns else []
+    all_columns = sorted(df['column_name'].unique()) if 'column_name' in df.columns else []
+
+    search_index = [f"📦 {ds}" for ds in all_datasets] + [f"🔑 {col}" for col in all_columns]
+
+    col_search, col_stats = st.columns([3, 1])
+
+    with col_search:
+        search_selection = st.selectbox(
+            "Search for a Dataset or Column",
+            options=search_index,
+            index=None,
+            placeholder="Type to search (e.g. 'Users', 'OrgUnitId')...",
+            label_visibility="collapsed"
+        )
+
+    if search_selection:
+        st.divider()
+
+        search_type = "dataset" if "📦" in search_selection else "column"
+        term = search_selection.split(" ", 1)[1]
+
+        if search_type == "dataset":
+            st.markdown(f"### Results for Dataset: **{term}**")
+
+            ds_data = df[df['dataset_name'] == term]
+            if not ds_data.empty:
+                meta = ds_data.iloc[0]
+
+                with st.container():
+                    c1, c2 = st.columns([3, 2])
+                    with c1:
+                        st.caption(f"Category: **{meta.get('category', 'Unknown')}**")
+                        if meta.get('url'):
+                            st.markdown(f"📄 [**Official Documentation**]({meta['url']})")
+
+                    with c2:
+                        show_relationship_summary(df, term)
+
+                with st.expander("📋 View Schema", expanded=True):
+                    display_cols = ['column_name', 'data_type', 'description', 'key']
+                    available_cols = [c for c in display_cols if c in ds_data.columns]
+                    st.dataframe(ds_data[available_cols], hide_index=True, use_container_width=True)
+
+        else:
+            st.markdown(f"### Datasets containing column: `{term}`")
+
+            hits = df[df['column_name'] == term]['dataset_name'].unique() if 'column_name' in df.columns else []
+
+            if len(hits) > 0:
+                st.info(f"Found **{len(hits)}** datasets containing `{term}`")
+
+                for ds_name in sorted(hits):
+                    ds_meta = df[df['dataset_name'] == ds_name].iloc[0]
+                    category = ds_meta.get('category', 'Unknown')
+
+                    with st.expander(f"📦 {ds_name}  ({category})"):
+                        c_info, c_rel = st.columns([2, 1])
+
+                        with c_info:
+                            desc = ds_meta.get('dataset_description', '')
+                            if desc:
+                                st.caption(f"💡 {desc}")
+                            if ds_meta.get('url'):
+                                st.markdown(f"[View Documentation]({ds_meta['url']})")
+
+                            col_row = df[
+                                (df['dataset_name'] == ds_name) &
+                                (df['column_name'] == term)
+                            ]
+                            st.caption("Column Details:")
+                            st.dataframe(
+                                col_row[['data_type', 'description', 'key']],
+                                hide_index=True,
+                                use_container_width=True
+                            )
+
+                        with c_rel:
+                            show_relationship_summary(df, ds_name)
+            else:
+                st.warning("No matches found.")
+
+    else:
+        # Default Dashboard View (hubs + orphans)
+        st.divider()
+        col_hubs, col_orphans = st.columns(2)
+
+        with col_hubs:
+            st.subheader("🌟 Most Connected Datasets ('Hubs')")
+
+            with st.expander("ℹ️ Why are these numbers so high?", expanded=False):
+                st.caption("""
+**High Outgoing (Refers To):** This dataset contains \"Super Keys\" like `OrgUnitId` or `UserId`
+which allows it to join to dozens of other structural tables.
+
+**High Incoming (Referenced By):** This is a central \"Dimension\" table (like `Users`)
+that almost every other table links to.
+""")
+
+            hubs = get_hub_datasets(df, top_n=10)
+            if not hubs.empty and hubs['total_connections'].sum() > 0:
+                st.dataframe(
+                    hubs[['dataset_name', 'category', 'outgoing_fks', 'incoming_fks']],
+                    column_config={
+                        "dataset_name": "Dataset",
+                        "category": "Category",
+                        "outgoing_fks": st.column_config.ProgressColumn("Refers To (Outgoing)", format="%d"),
+                        "incoming_fks": st.column_config.ProgressColumn("Referenced By (Incoming)", format="%d")
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No relationship data available yet.")
+
+        with col_orphans:
+            st.subheader("🏝️ Orphan Datasets")
+            orphans = get_orphan_datasets(df)
+            if orphans:
+                st.warning(f"{len(orphans)} datasets have no detected relationships")
+                st.caption("These tables usually lack standard keys like `OrgUnitId` or `UserId`.")
+
+                orphan_details = (
+                    df[df['dataset_name'].isin(orphans)]
+                    [['dataset_name', 'category', 'dataset_description']]
+                    .drop_duplicates('dataset_name')
+                    .sort_values('dataset_name')
+                    .rename(columns={'dataset_description': 'description'})
+                )
+
+                st.dataframe(
+                    orphan_details,
+                    column_config={
+                        "dataset_name": "Dataset",
+                        "category": "Category",
+                        "description": st.column_config.TextColumn("Description", width="medium")
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
+            else:
+                st.success("All datasets have at least one connection!")
+
+        # Category chart (advanced only)
+        if is_advanced:
+            st.divider()
+            st.subheader("📁 Category Breakdown")
+
+            cat_stats = df.groupby('category').agg({
+                'dataset_name': 'nunique',
+                'column_name': 'count'
+            }).reset_index()
+            cat_stats.columns = ['Category', 'Datasets', 'Columns']
+            cat_stats = cat_stats.sort_values('Datasets', ascending=False)
+
+            col_chart, col_table = st.columns([2, 1])
+
+            with col_chart:
+                fig = px.bar(
+                    cat_stats, x='Category', y='Datasets',
+                    color='Columns',
+                    title="Datasets per Category",
+                    color_continuous_scale='Blues'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col_table:
+                st.dataframe(cat_stats, use_container_width=True, hide_index=True)
 #------------------------------
 def main():
     """main entry point that orchestrates the application."""
