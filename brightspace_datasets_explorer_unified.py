@@ -5843,7 +5843,8 @@ def main():
         render_3d_explorer(df)
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)
-
+    elif view == "📋 Dataset ID Reference":
+        render_dataset_id_reference(df)
     # route to appropriate view
     if view == "📊 Dashboard":
         render_dashboard(df)
