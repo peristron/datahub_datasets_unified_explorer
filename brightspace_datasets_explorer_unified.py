@@ -5692,7 +5692,7 @@ that almost every other table links to.
                     use_container_width=True
                 )
             else:
-                st.success("All datasets have at least one connection!")
+                st.success("All datasets have at least one connection")
 
         # Category chart (advanced only)
         if is_advanced:
