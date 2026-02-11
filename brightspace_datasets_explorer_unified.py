@@ -2168,6 +2168,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "🔧 UDF Flattener",
                 "✨ Schema Diff",
                 "🌐 3D Explorer",
+                "📋 Dataset ID Reference",   # ← New
                 "🤖 AI Assistant"
             ]
             captions = [
@@ -2180,9 +2181,9 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
                 "Full Schema in 3D (mostly for fun)",
+                "SchemaID + PluginID Reference",   # ← New caption
                 "Ask questions about data"
             ]
-
             view = st.radio(
                 "Navigation",
                 options,
