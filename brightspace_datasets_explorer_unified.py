@@ -2484,44 +2484,7 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — help
 """)
 
     return view, selected_datasets
-def render_dataset_id_reference(df: pd.DataFrame):
-    """Full-page view: Central mapping of dataset names to SchemaID and PluginIDs."""
-    st.header("📋 Brightspace Dataset ID Reference")
-    st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
-
-    if df.empty:
-        st.warning("No dataset data loaded yet. Please scrape first.")
-        return
-
-    # Dynamically build the table from all available datasets
-    data = {
-        "Dataset Name": sorted(df['dataset_name'].unique()),
-        "SchemaID": [""] * df['dataset_name'].nunique(),           # Placeholder
-        "Full PluginID": [""] * df['dataset_name'].nunique(),      # Placeholder
-        "Differential PluginID": [""] * df['dataset_name'].nunique()  # Placeholder
-    }
-
-    ref_df = pd.DataFrame(data)
-
-    st.dataframe(
-        ref_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Dataset Name": st.column_config.TextColumn("Dataset Name", width="medium"),
-            "SchemaID": st.column_config.TextColumn("SchemaID", width="large"),
-            "Full PluginID": st.column_config.TextColumn("Full PluginID", width="large"),
-            "Differential PluginID": st.column_config.TextColumn("Differential PluginID", width="large"),
-        }
-    )
-
-    st.info("""
-    💡 **Tip:** These IDs are stable across environments and are used when calling the Brightspace Data Hub APIs directly.
-    
-    The SchemaID / PluginID columns are currently placeholders. 
-    You can populate them from D2L's official documentation or your instance's configuration.
-    """)
-
+def render_dataset_id_reference()
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
