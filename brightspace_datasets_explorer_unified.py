@@ -2167,7 +2167,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "🔀 SQL Translator",
                 "🔧 UDF Flattener",
                 "✨ Schema Diff",
-#------------------------------
                 "🌐 3D Explorer",
                 "🤖 AI Assistant"
             ]
@@ -2180,7 +2179,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Convert T-SQL ↔ Postgres",
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
-#------------------------------
                 "Full Schema in 3D (mostly for fun)",
                 "Ask questions about data"
             ]
@@ -2212,69 +2210,59 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             except Exception:
                 last_updated = "Unknown"
 
-            st.success(f"✅ **{df['dataset_name'].nunique()}** Datasets Loaded")
+            # Robust column handling (protects against old CSVs)
+            if 'dataset_name' in df.columns:
+                dataset_count = df['dataset_name'].nunique()
+            elif 'dataset' in df.columns:           # legacy column name
+                dataset_count = df['dataset'].nunique()
+                df = df.rename(columns={'dataset': 'dataset_name'})
+            else:
+                dataset_count = 0
+
+            st.success(f"✅ **{dataset_count}** Datasets Loaded")
             st.caption(f"📅 Schema updated: {last_updated}")
             st.caption(f"🔢 Total Columns: {len(df):,}")
         else:
-            st.error("❌ No data loaded")
+            st.warning("⚠️ No schema data loaded yet")
 
-#------------------------------
         # Data Management / Backup
         with st.expander("⚙️ Data Management", expanded=df.empty):
-            # Count current URLs
             current_urls = st.session_state.get('custom_urls') or DEFAULT_URLS
             url_count = len([u for u in current_urls.strip().split('\n') if u.strip().startswith('http')])
             
             st.caption(f"Currently configured: **{url_count}** URLs")
             
-            if st.button(
-                "✏️ Edit URLs (Full View)",
-                use_container_width=True,
-                help="Open a full-width editor to view and edit scrape URLs."
-            ):
+            if st.button("✏️ Edit URLs (Full View)", use_container_width=True):
                 st.session_state['show_url_editor'] = True
                 st.rerun()
 
-            if st.button(
-                "🔄 Scrape & Update",
-                type="primary",
-                use_container_width=True,
-                help="Scrape the configured URLs and refresh the schema."
-            ):
+            if st.button("🔄 Scrape & Update", type="primary", use_container_width=True):
                 urls_text = st.session_state.get('custom_urls') or DEFAULT_URLS
                 urls = [u.strip() for u in urls_text.split('\n') if u.strip().startswith('http')]
                 if urls:
                     with st.spinner(f"Scraping {len(urls)} pages..."):
                         new_df = scrape_and_save(urls)
                         if not new_df.empty:
-                            st.session_state['scrape_msg'] = (
-                                f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
-                            )
+                            st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
+                            st.session_state['current_df'] = new_df          # ← Important for hot-reload
                             load_data.clear()
                             st.rerun()
                 else:
-                    st.error("No valid URLs configured. Use 'Edit URLs' to add some.")
+                    st.error("No valid URLs configured.")
 
             if not df.empty:
                 timestamp = pd.Timestamp.now().strftime('%Y-%m-%d')
                 csv = df.to_csv(index=False).encode('utf-8')
-
-                st.write("")
 
                 st.download_button(
                     label="💾 Download Metadata Backup (CSV)",
                     data=csv,
                     file_name=f"brightspace_metadata_backup_{timestamp}.csv",
                     mime="text/csv",
-                    help="Save a backup of the current schema state. Useful for comparisons or offline analysis.",
                     use_container_width=True
                 )
-#------------------------------
-            if st.button(
-                "🩺 Health Check",
-                use_container_width=True,
-                help="Validate stored schema against live D2L documentation."
-            ):
+
+            if st.button("🩺 Health Check", use_container_width=True):
                 st.session_state['show_health_check'] = True
                 st.rerun()
         # dataset selection (when applicable)
