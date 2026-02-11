@@ -5756,18 +5756,13 @@ def main():
 
         st.markdown("""
         ### First-time setup
-        1. Open the sidebar → **⚙️ Data Management**  
-        2. Click **🔄 Scrape & Update**
+        To populate this application with data, please use the **sidebar controls** on the left:
+
+        1. Locate the **⚙️ Data Management** section in the sidebar.
+        2. Click the red **🔄 Scrape & Update** button.
 
         This will pull the latest dataset definitions from D2L documentation.
         """)
-
-        # Big prominent action button
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            if st.button("🚀 Scrape Now", type="primary", use_container_width=True):
-                st.session_state['scrape_trigger'] = True   # Optional flag (you can use it later)
-                st.rerun()
 
         return
 
