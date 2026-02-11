@@ -2397,7 +2397,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 if st.session_state['auth_error']:
                     st.error("Incorrect password.")
 
-#------------------------------
             # cross-links (advanced mode only)
             if is_advanced:
                 st.divider()
@@ -2412,7 +2411,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     )
                 )
 
-                # New: Dataset ID Reference (Phase 1)
+                # Dataset ID Reference button
                 if st.button("📋 Dataset ID Reference", use_container_width=True):
                     render_dataset_id_reference()
 
