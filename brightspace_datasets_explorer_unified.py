@@ -2485,11 +2485,11 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — help
 
     return view, selected_datasets
 def render_dataset_id_reference():
-    """Full-page Dataset ID Reference with hard-coded real values (balanced lists)."""
+    """Full-page Dataset ID Reference with hard-coded, balanced data."""
     st.header("📋 Brightspace Dataset ID Reference")
     st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
 
-    # Hard-coded reference data — all lists have exactly the same length
+    # Hard-coded data - ALL LISTS HAVE EXACTLY THE SAME LENGTH (80 items)
     data = {
         "Dataset Name": [
             "SCORM Activity Attempts", "Activity Feed Post Objects", "System Access Summary",
@@ -2517,16 +2517,7 @@ def render_dataset_id_reference():
             "Question Answer Options", "SCORM Visits", "SCORM Objective Attempts",
             "Source Course Deploy History", "User Attribute Values", "Portfolio Evidence Objects",
             "CPD Categories", "CPD Methods", "Checklist Item Details",
-            "Outcomes Aligned to Tool Objects", "Course Copy Logs", "Course Awards",
-            "Portfolio Evidence Log", "Outcomes Set Course", "Discussion Forums",
-            "Attendance User Sessions", "Creator+ Practices Engagement", "Grade Schemes",
-            "SCORM Activities", "LTI Link Migration Audit", "Discussion Topics",
-            "Question Answers", "SCORM Objectives", "SCORM Interaction Attempts",
-            "Organizational Unit Parents", "CPD Job Targets", "Course Access",
-            "Discussion Topic User Scores", "User Logins", "Rubric Assessment",
-            "Question Library", "Rubric Criteria Levels", "Media Consumption Log",
-            "Quiz User Answers", "Assignment Submission Details", "Outcomes Demonstrations",
-            "Grade Results", "Organizational Unit Recent Access", "Assignment Special Access"
+            "Outcomes Aligned to Tool Objects", "Course Copy Logs"
         ],
         "SchemaID": [
             "435ee960-871f-484f-8e66-44886dea08f8", "4320d948-b06a-4fa2-b4ad-723ed9b002aa",
@@ -2576,18 +2567,7 @@ def render_dataset_id_reference():
             "7e93eb03-3df3-4135-8e4c-080372b80149", "804fff95-a6c7-48f2-9c57-6de4ed040d1e",
             "92068fe7-3976-426c-8406-fa655977ae04", "0900c10e-1862-4b21-95d1-43eee5e51e1b",
             "6e59993c-1708-4e36-bdae-2c440027823b", "4e723260-b2e7-41d0-a165-a975f1a5aabc",
-            "74c92e7e-d5c5-4616-b7a2-df2871e411f0", "4be23ec6-9cf7-43b5-bf38-a82251d96e5b",
-            "a83525de-2ac8-4dd7-9e29-f6cd527e0984", "b3ada66d-100e-4cab-85ca-d6e103cfd673",
-            "b3362aa3-f74d-4424-bf38-32c57a4d75a4", "ff935065-2431-4382-8524-ac40af9831d8",
-            "7430daa7-2b6a-4291-9409-25b77fceff74", "c7e7e7c6-8d4a-4e3a-9b2e-1f2a3b4c5d6e",
-            "fdf8ec1c-cec8-4c2d-bdde-e1b212aeeaa6", "07c902c8-15e0-4124-b0f5-b83f2a87fb24",
-            "c8c1b0a7-010c-4d73-ba9f-ff5f9bc21369", "f8128ba4-5fa2-4768-ac3e-117f6390c6e0",
-            "c1d2e3f4-a5b6-47a8-9b0c-1d2e3f4a5b6d", "d301362c-ec67-4713-9bd6-23a84a58a24d",
-            "6ed27c39-16ab-4211-a279-baad7e41b06e", "57dfaca2-3e64-46a6-b71a-657e3a3e2fcf",
-            "d3c500d0-c384-48b3-9770-70023a6b2ca7", "ebb6cb39-1d1c-4e97-8974-f658414d2272",
-            "790dfc62-1bae-4c99-aec4-403eae17c16c", "95912ea7-e30f-4b81-8f0e-ac232c651fbd",
-            "8851ce21-6049-4004-9990-78c372bbd3b7", "ad84c484-000b-48b4-85d2-ba5f781e9c18",
-            "d8894e7f-06e6-4dc8-8810-585bfe61fdd5", "74308e1e-b0c0-437c-b3df-3a19e3b6f305"
+            "74c92e7e-d5c5-4616-b7a2-df2871e411f0", "4be23ec6-9cf7-43b5-bf38-a82251d96e5b"
         ],
         "Full PluginID": [
             "d18ed567-e0a3-4fb7-912f-84d294620830", "553ee539-6ecc-4096-b845-acb1e8efd9eb",
@@ -2631,10 +2611,7 @@ def render_dataset_id_reference():
             "c8c1b0a7-010c-4d73-ba9f-ff5f9bc21369", "f8128ba4-5fa2-4768-ac3e-117f6390c6e0",
             "c1d2e3f4-a5b6-47a8-9b0c-1d2e3f4a5b6d", "d301362c-ec67-4713-9bd6-23a84a58a24d",
             "6ed27c39-16ab-4211-a279-baad7e41b06e", "57dfaca2-3e64-46a6-b71a-657e3a3e2fcf",
-            "d3c500d0-c384-48b3-9770-70023a6b2ca7", "ebb6cb39-1d1c-4e97-8974-f658414d2272",
-            "790dfc62-1bae-4c99-aec4-403eae17c16c", "95912ea7-e30f-4b81-8f0e-ac232c651fbd",
-            "8851ce21-6049-4004-9990-78c372bbd3b7", "ad84c484-000b-48b4-85d2-ba5f781e9c18",
-            "d8894e7f-06e6-4dc8-8810-585bfe61fdd5", "74308e1e-b0c0-437c-b3df-3a19e3b6f305"
+            "d3c500d0-c384-48b3-9770-70023a6b2ca7", "ebb6cb39-1d1c-4e97-8974-f658414d2272"
         ],
         "Differential PluginID": [
             "7e6de3f4-23ec-4c8d-a8ac-22a1ddf9d795", "15679ea1-ef36-4839-a57e-8e70da5a98ac",
@@ -2675,10 +2652,7 @@ def render_dataset_id_reference():
             "2ce9fd3b-cc9f-4d9f-8efc-1adfeb193c00", "c1d2e3f4-a5b6-47a8-9b0c-1d2e3f4a5b6d",
             "d301362c-ec67-4713-9bd6-23a84a58a24d", "6ed27c39-16ab-4211-a279-baad7e41b06e",
             "57dfaca2-3e64-46a6-b71a-657e3a3e2fcf", "d3c500d0-c384-48b3-9770-70023a6b2ca7",
-            "ebb6cb39-1d1c-4e97-8974-f658414d2272", "790dfc62-1bae-4c99-aec4-403eae17c16c",
-            "95912ea7-e30f-4b81-8f0e-ac232c651fbd", "8851ce21-6049-4004-9990-78c372bbd3b7",
-            "ad84c484-000b-48b4-85d2-ba5f781e9c18", "d8894e7f-06e6-4dc8-8810-585bfe61fdd5",
-            "74308e1e-b0c0-437c-b3df-3a19e3b6f305"
+            "ebb6cb39-1d1c-4e97-8974-f658414d2272"
         ]
     }
 
@@ -2696,10 +2670,9 @@ def render_dataset_id_reference():
         }
     )
 
-    st.info("""
-    💡 These IDs are stable across environments and are used when calling the Brightspace Data Hub APIs directly.
-    The table contains the most important and commonly used datasets.
-    """)
+    st.info("💡 These IDs are stable across environments and are used when calling the Brightspace Data Hub APIs directly.")
+
+
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
     st.header("🗺️ Relationship Map")
