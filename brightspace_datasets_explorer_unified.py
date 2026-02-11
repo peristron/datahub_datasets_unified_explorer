@@ -2168,7 +2168,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "🔧 UDF Flattener",
                 "✨ Schema Diff",
                 "🌐 3D Explorer",
-                "📋 Dataset ID Reference",   # ← New
+                "📋 Dataset ID Reference",   # New
                 "🤖 AI Assistant"
             ]
             captions = [
@@ -2181,9 +2181,10 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
                 "Full Schema in 3D (mostly for fun)",
-                "SchemaID + PluginID Reference",   # ← New caption
+                "SchemaID + PluginID Reference",   # New
                 "Ask questions about data"
             ]
+
             view = st.radio(
                 "Navigation",
                 options,
@@ -2203,7 +2204,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
         st.divider()
 
-        # data status and scraper
+        # data status and scraper - ROBUST VERSION
         if not df.empty:
             try:
                 mod_time = os.path.getmtime('dataset_metadata.csv')
@@ -2211,10 +2212,10 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             except Exception:
                 last_updated = "Unknown"
 
-            # Robust column handling (protects against old CSVs)
+            # Safe column handling (protects against old CSVs)
             if 'dataset_name' in df.columns:
                 dataset_count = df['dataset_name'].nunique()
-            elif 'dataset' in df.columns:           # legacy column name
+            elif 'dataset' in df.columns:           # legacy name
                 dataset_count = df['dataset'].nunique()
                 df = df.rename(columns={'dataset': 'dataset_name'})
             else:
@@ -2245,7 +2246,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                         new_df = scrape_and_save(urls)
                         if not new_df.empty:
                             st.session_state['scrape_msg'] = f"Success: {new_df['dataset_name'].nunique()} datasets loaded"
-                            st.session_state['current_df'] = new_df          # ← Important for hot-reload
+                            st.session_state['current_df'] = new_df
                             load_data.clear()
                             st.rerun()
                 else:
@@ -2266,6 +2267,10 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             if st.button("🩺 Health Check", use_container_width=True):
                 st.session_state['show_health_check'] = True
                 st.rerun()
+
+
+
+    return view, selected_datasets
         # dataset selection (when applicable)
         selected_datasets: List[str] = []
         if not df.empty and view in ["🗺️ Relationship Map", "⚡ SQL Builder"]:
