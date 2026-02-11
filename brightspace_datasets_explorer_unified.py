@@ -2884,46 +2884,27 @@ that almost every other table links to.
                 st.rerun()
 
 #------------------------------
-def render_dataset_id_reference():
-    """Power User tool: Central mapping of dataset names to SchemaID and PluginIDs."""
-    st.markdown("### 📋 Brightspace Dataset ID Reference")
-    st.caption("SchemaID + Full/Differential PluginIDs (stable across environments)")
+def render_dataset_id_reference(df: pd.DataFrame):
+    """Full-page view: Central mapping of dataset names to SchemaID and PluginIDs."""
+    st.header("📋 Brightspace Dataset ID Reference")
+    st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
 
-    # Central mapping (Phase 1 - static)
+    if df.empty:
+        st.warning("No dataset data loaded yet. Please scrape first.")
+        return
+
+    # Dynamically build the table from all available datasets
     data = {
-        "Dataset Name": [
-            "Users",
-            "Organizational Units",
-            "Role Details",
-            "SCORM Activity Attempts",
-            # ... add all others from the JSON you shared
-        ],
-        "SchemaID": [
-            "b21a6414-38f8-4da8-9a65-8b5586f9fe3b",
-            "53d5273c-1dc0-412b-beb3-417298bd0c6d",
-            "d70f64e0-ad63-4140-aac5-e337560b8371",
-            "435ee960-871f-484f-8e66-44886dea08f8",
-            # ... full list
-        ],
-        "Full PluginID": [
-            "1d6d722e-b572-456f-97c1-d526570daa6b",
-            "07a9e561-e22f-4e82-8dd6-7bfb14c91776",
-            "bd61f20b-be91-4b93-b449-46361e2c323f",
-            "d18ed567-e0a3-4fb7-912f-84d294620830",
-            # ... full list
-        ],
-        "Differential PluginID": [
-            "e8339b7a-2d32-414e-9136-2adf3215a09c",
-            "867fb940-2b80-49da-9c8b-277c99686fc3",
-            "e49a4837-72d7-4175-80d9-bd4dc10bdd08",
-            "7e6de3f4-23ec-4c8d-a8ac-22a1ddf9d795",
-            # ... full list
-        ],
+        "Dataset Name": sorted(df['dataset_name'].unique()),
+        "SchemaID": [""] * df['dataset_name'].nunique(),           # Placeholder
+        "Full PluginID": [""] * df['dataset_name'].nunique(),      # Placeholder
+        "Differential PluginID": [""] * df['dataset_name'].nunique()  # Placeholder
     }
 
-    df = pd.DataFrame(data)
+    ref_df = pd.DataFrame(data)
+
     st.dataframe(
-        df,
+        ref_df,
         use_container_width=True,
         hide_index=True,
         column_config={
@@ -2934,7 +2915,12 @@ def render_dataset_id_reference():
         }
     )
 
-    st.info("💡 Tip: These IDs are stable. Use them when calling the Brightspace Data Hub APIs directly.")
+    st.info("""
+    💡 **Tip:** These IDs are stable across environments and are used when calling the Brightspace Data Hub APIs directly.
+    
+    The SchemaID / PluginID columns are currently placeholders. 
+    You can populate them from D2L's official documentation or your instance's configuration.
+    """)
 
 
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
