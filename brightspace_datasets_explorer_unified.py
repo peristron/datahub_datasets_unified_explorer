@@ -2610,18 +2610,30 @@ def render_dataset_id_reference(df: pd.DataFrame):
 
     ref_df = pd.DataFrame(hardcoded)
 
-    # Auto-detect new datasets from scraper
+#--------------------------------------------------------------------------
+    # Auto-detect new datasets from scraper (PRESERVE ORIGINAL CASING)
     if not df.empty and 'dataset_name' in df.columns:
-        scraped_names = set(df['dataset_name'].str.strip().str.lower())
-        known_names = set(ref_df['Dataset Name'].str.strip().str.lower())
-        new_names = sorted(scraped_names - known_names)
+        # Get deduplicated scraped names WITH original casing
+        scraped = (
+            df[['dataset_name']]
+            .drop_duplicates()
+            .assign(lower=lambda x: x['dataset_name'].str.strip().str.lower())
+        )
 
-        if new_names:
+        known_lower = set(
+            ref_df['Dataset Name'].str.strip().str.lower()
+        )
+
+        # Only keep rows that are truly new
+        new_mask = ~scraped['lower'].isin(known_lower)
+        new_df = scraped[new_mask].copy()
+
+        if not new_df.empty:
             new_rows = pd.DataFrame({
-                "Dataset Name": new_names,
-                "SchemaID": ["(New – ID not mapped yet)"] * len(new_names),
-                "Full PluginID": ["(New – ID not mapped yet)"] * len(new_names),
-                "Differential PluginID": ["(New – ID not mapped yet)"] * len(new_names)
+                "Dataset Name": new_df['dataset_name'],           # ← original case!
+                "SchemaID": ["(New – ID not mapped yet)"] * len(new_df),
+                "Full PluginID": ["(New – ID not mapped yet)"] * len(new_df),
+                "Differential PluginID": ["(New – ID not mapped yet)"] * len(new_df)
             })
             ref_df = pd.concat([ref_df, new_rows], ignore_index=True)
 
