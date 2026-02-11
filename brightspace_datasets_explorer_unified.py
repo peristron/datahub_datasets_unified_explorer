@@ -2181,7 +2181,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 "Pivot Custom Fields (EAV)",
                 "Compare against backups",
                 "Full Schema in 3D (mostly for fun)",
-                "SchemaID + PluginID Reference",
+                "SchemaID + PluginID Reference (experimental)",
                 "Ask questions about data"
             ]
 
