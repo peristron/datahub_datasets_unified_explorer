@@ -5788,37 +5788,75 @@ def render_udf_flattener(df: pd.DataFrame):
 def main():
     """main entry point that orchestrates the application."""
 
-    # show scrape success message if exists
+    # Show scrape success message if it exists
     if st.session_state.get('scrape_msg'):
         st.success(st.session_state['scrape_msg'])
         st.session_state['scrape_msg'] = None
 
-    # load data
+    # Load data from disk (or empty on first run)
     df = load_data()
 
-    # render sidebar and get navigation state
+    # Prefer fresh data from session_state after a successful scrape
+    # (this makes hot-reloads and immediate UI updates much smoother)
+    if 'current_df' in st.session_state:
+        df = st.session_state.current_df
+
+    # Render sidebar and get navigation state
     view, selected_datasets = render_sidebar(df)
 
-    # check if URL editor is requested (takes priority over normal views)
+    # URL Editor takes priority
     if st.session_state.get('show_url_editor'):
         render_url_editor()
         return
-#------------------------------
+
+    # Health Check takes priority
     if st.session_state.get('show_health_check'):
         render_health_check(df)
         return
-    # handle empty data state
+
+    # Improved empty state (much friendlier first-time experience)
     if df.empty:
         st.title("🔗 Brightspace Dataset Explorer")
-        st.warning("No data loaded. Please use the sidebar to scrape the Knowledge Base articles.")
+        st.info("👋 Welcome! No schema data has been loaded yet.")
 
         st.markdown("""
-### Getting Started
-1. Open the **Data Management** section in the sidebar  
-2. Click **Scrape & Update All URLs** to load dataset information  
-3. Once loaded, explore relationships, search schemas, and use AI assistance
-""")
+        ### First-time setup
+        1. Open the sidebar → **⚙️ Data Management**  
+        2. Click **🔄 Scrape & Update**
+
+        This will pull the latest dataset definitions from D2L documentation.
+        """)
+
+        # Big prominent action button
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            if st.button("🚀 Scrape Now", type="primary", use_container_width=True):
+                st.session_state['scrape_trigger'] = True   # Optional flag (you can use it later)
+                st.rerun()
+
         return
+
+    # Route to the selected view
+    if view == "📊 Dashboard":
+        render_dashboard(df)
+    elif view == "🗺️ Relationship Map":
+        render_relationship_map(df, selected_datasets)
+    elif view == "📋 Schema Browser":
+        render_schema_browser(df)
+    elif view == "📚 KPI Recipes":
+        render_kpi_recipes(df)
+    elif view == "⚡ SQL Builder":
+        render_sql_builder(df, selected_datasets)
+    elif view == "🔀 SQL Translator":
+        render_sql_translator()
+    elif view == "🔧 UDF Flattener":
+        render_udf_flattener(df)
+    elif view == "✨ Schema Diff":
+        render_schema_diff(df)
+    elif view == "🌐 3D Explorer":
+        render_3d_explorer(df)
+    elif view == "🤖 AI Assistant":
+        render_ai_assistant(df, selected_datasets)
 
     # route to appropriate view
     if view == "📊 Dashboard":
