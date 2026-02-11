@@ -2487,26 +2487,133 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — help
 
 
 def render_dataset_id_reference(df: pd.DataFrame):
-    """Hybrid Dataset ID Reference: Hard-coded IDs + auto-detect new datasets."""
+    """Hybrid Dataset ID Reference: Hard-coded stable IDs + auto-detect new datasets from scraper."""
     st.header("📋 Brightspace Dataset ID Reference")
     st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
 
-    # 1. Hard-coded known datasets (stable IDs)
+    # Hard-coded known datasets (stable IDs)
     hardcoded = [
         {"Dataset Name": "SCORM Activity Attempts", "SchemaID": "435ee960-871f-484f-8e66-44886dea08f8", "Full PluginID": "d18ed567-e0a3-4fb7-912f-84d294620830", "Differential PluginID": "7e6de3f4-23ec-4c8d-a8ac-22a1ddf9d795"},
         {"Dataset Name": "Activity Feed Post Objects", "SchemaID": "4320d948-b06a-4fa2-b4ad-723ed9b002aa", "Full PluginID": "553ee539-6ecc-4096-b845-acb1e8efd9eb", "Differential PluginID": "15679ea1-ef36-4839-a57e-8e70da5a98ac"},
         {"Dataset Name": "System Access Summary", "SchemaID": "c6ac3243-0c00-4e04-823f-483d68ea4d0d", "Full PluginID": "9200879f-d943-47c7-9e20-c5d0bd330707", "Differential PluginID": "d16cebd8-0783-411c-89b6-6010c262544a"},
-        # ... (I kept the full list short here for readability — I'll give you the complete one below)
-        # Add all your hard-coded entries here (the big list from previous message)
+        {"Dataset Name": "Local Authentication Security Log", "SchemaID": "66dc53a4-4f62-4235-9727-af59f670f0b5", "Full PluginID": "b8ada4c7-d5d7-4377-bf8a-81718978ba01", "Differential PluginID": "01227024-8c3f-4c63-9498-83d8c4eb85b5"},
+        {"Dataset Name": "Survey Objects", "SchemaID": "ed15df0c-49e7-4ace-aeb3-22a415975a3f", "Full PluginID": "6bb3c6c2-7a61-44df-a081-d8762d93a3b5", "Differential PluginID": "3388f90c-2060-4583-a3df-50e9734b67d6"},
+        {"Dataset Name": "Competency Activity Log", "SchemaID": "d33bfddd-5151-46f7-966e-0afa6023f300", "Full PluginID": "dd43a7db-801d-4fb3-b8f9-f94844e012f6", "Differential PluginID": "ee58980a-4884-4dee-861b-ca685b00d77b"},
+        {"Dataset Name": "System Access Log", "SchemaID": "c3336250-30d1-45bc-809c-7b68b983f305", "Full PluginID": "5813e618-49ec-4e5c-90e7-1fb4fe4b59c6", "Differential PluginID": "a5bd3c98-3582-4232-8ddd-653d5ff7f074"},
+        {"Dataset Name": "Quiz Attempts", "SchemaID": "a7d6e843-bf8d-4965-9274-95028f3c4d86", "Full PluginID": "f1623581-c5d7-4562-93fe-6ad16010c96b", "Differential PluginID": "d8c9b542-0f2d-4d7e-9774-c07bebe2eff6"},
+        {"Dataset Name": "Assignment Submissions", "SchemaID": "a5686dc9-78fc-4495-ada4-50db954bebea", "Full PluginID": "041dde83-3a29-4a37-97de-9ee615318111", "Differential PluginID": "7c7094f9-6268-49a8-aea3-a952369a849d"},
+        {"Dataset Name": "Rubric Assessment Criteria", "SchemaID": "7c01ead6-8011-4d04-8b9a-7289b731a9fc", "Full PluginID": "612e3196-52ad-42bd-b460-8b850f7a7be1", "Differential PluginID": "d22a84ac-412e-428a-a094-08d39360e68a"},
+        {"Dataset Name": "Attendance Sessions", "SchemaID": "879a19b1-1b72-42b0-b0c5-1304331a6443", "Full PluginID": "78035701-db72-463b-9dc8-a6f3eed2041e", "Differential PluginID": "d191c862-ae01-43a0-acfa-b670f1128ce3"},
+        {"Dataset Name": "LTI Links", "SchemaID": "7a0d551f-0bbb-4544-a077-e1c427a0e5f3", "Full PluginID": "e00227de-5563-4c89-80f7-c6847eafe6f9", "Differential PluginID": "5d85d8e7-5141-42bc-8855-c25c913feed0"},
+        {"Dataset Name": "Outcomes In Registries", "SchemaID": "99376909-7e3c-44cf-a723-76e50243a54d", "Full PluginID": "eb28c5ce-d299-4ba0-9956-fe94b6e4fd30", "Differential PluginID": "c6521348-a7a9-49e8-8b27-2e845b29ea18"},
+        {"Dataset Name": "SIS Course Merge Log", "SchemaID": "b9611500-29d6-471f-95ff-014a599e0e74", "Full PluginID": "270a2afa-1f09-439c-b0df-f83b166b0dbd", "Differential PluginID": "12da5758-164c-4e00-af5a-e850c4403528"},
+        {"Dataset Name": "Outcomes Rubric Alignments", "SchemaID": "a38958d0-f56b-49fd-90fe-c7e712c6e3f5", "Full PluginID": "aed60e0d-1f4a-4c2c-b129-57be73fbadf8", "Differential PluginID": "545d5972-757f-49d2-be04-10e6df21a667"},
+        {"Dataset Name": "LTI Advantage Deployment Audit", "SchemaID": "56ab3878-f6ec-41a0-af94-3358fc85729a", "Full PluginID": "581ecbef-ca17-48c0-853b-c275c7aaf4f1", "Differential PluginID": "194176cf-17e8-4a81-8436-c5704ef2a20a"},
+        {"Dataset Name": "Role Details", "SchemaID": "d70f64e0-ad63-4140-aac5-e337560b8371", "Full PluginID": "bd61f20b-be91-4b93-b449-46361e2c323f", "Differential PluginID": "e49a4837-72d7-4175-80d9-bd4dc10bdd08"},
+        {"Dataset Name": "Awards Issued", "SchemaID": "dcef8789-1e6b-4d98-ac76-588583b3ba30", "Full PluginID": "6d6cd2d8-c714-41fd-9465-f797dfd69c76", "Differential PluginID": "627c8792-65b2-4484-8398-ac21b91fb07d"},
+        {"Dataset Name": "Intelligent Agent Objects", "SchemaID": "d336eec3-b1eb-41ef-8245-ff20ca98fe14", "Full PluginID": "b069488a-aff7-42f2-828c-14bb0f71f3f4", "Differential PluginID": "063dced8-0e14-43f6-a1e9-a6261b316e50"},
+        {"Dataset Name": "SCORM Objects", "SchemaID": "d611f5e9-749e-4db0-b564-0549efe89d57", "Full PluginID": "ff5813ca-87f7-4def-983d-a2a88c42dbb4", "Differential PluginID": "e19f7212-d517-43d9-9078-ee97b63fdd1d"},
+        {"Dataset Name": "Portfolio Categories", "SchemaID": "6ef67fee-bc34-4a67-9ac5-75be0953b24b", "Full PluginID": "45da28c2-81f9-4b31-ad7c-edbc1838ae63", "Differential PluginID": "ee6afb72-7781-478f-9996-321611490c58"},
+        {"Dataset Name": "Discussion Posts Read Status", "SchemaID": "b4c8636c-b717-4422-97e3-aa40c9722e70", "Full PluginID": "ac51124b-6038-4b04-a186-92eb4cef40b0", "Differential PluginID": "dfad9cf9-dc5f-482e-87c6-5c69bdfca161"},
+        {"Dataset Name": "TurnItIn Submissions", "SchemaID": "ac48b6d1-6655-48e4-907b-61c0fdbb37d1", "Full PluginID": "e4b3d080-b4f8-4d6c-abf3-98bf887829bc", "Differential PluginID": "341c1278-f32b-43c7-b29e-db4881a463f4"},
+        {"Dataset Name": "Checklist Objects", "SchemaID": "d4a354f1-edfd-4443-9a86-95e219935a78", "Full PluginID": "96a69e76-1045-4e06-8517-5783a844b50e", "Differential PluginID": "8ce4c7b2-7313-4610-a98a-e8b6e11c70c0"},
+        {"Dataset Name": "Gradebook Settings", "SchemaID": "4196a13f-4431-47d7-b2e0-a97197b5d18c", "Full PluginID": "c3672b39-846e-49bf-8cf4-69015a8f15c1", "Differential PluginID": "8532e304-e08e-469f-a503-172b1b93345b"},
+        {"Dataset Name": "Competency Log", "SchemaID": "b7bb72a8-2ae0-43a3-83e8-2d1a0f9165ca", "Full PluginID": "1f2ca72d-f39d-4ef6-95f6-ad5e991b8b8e", "Differential PluginID": "279cd3bf-70db-4f4d-be40-8183b54c8ee4"},
+        {"Dataset Name": "Course Publisher Recipients", "SchemaID": "6fd5da94-5270-4359-a6b2-8d0896527c1f", "Full PluginID": "e8b4670e-fda5-4c93-a8db-689e6881230c", "Differential PluginID": "1eaa086d-9073-4857-afc9-12dde5e8a93a"},
+        {"Dataset Name": "Competency Activity Results", "SchemaID": "6cecdaab-bff9-484f-a0d9-61c558707fad", "Full PluginID": "7d3bda26-1c97-4f31-a8fa-1df8fbd83dc0", "Differential PluginID": "91593014-7d61-4a04-adaf-54c86061ae43"},
+        {"Dataset Name": "Intelligent Agent Run Users", "SchemaID": "a4f709a6-34ea-490d-bad1-22268db8c6ac", "Full PluginID": "ba6315cf-4c0d-42b4-827f-b9f29e1e34f5", "Differential PluginID": "1dc1fc77-8906-4685-ad0c-66a841cb5142"},
+        {"Dataset Name": "Activity Exemptions Log", "SchemaID": "6ed33466-03ce-4702-9402-d8089ccaf5cc", "Full PluginID": "ef65e37a-7ae4-4389-9de0-c0d1ab7a9596", "Differential PluginID": "53198ba5-d30f-476b-bbb1-bbf9cdf1ed4c"},
+        {"Dataset Name": "Tools", "SchemaID": "81d4bd50-9db6-495d-93ed-a3dbb6597a61", "Full PluginID": "c437b117-16b3-46b8-bae9-ac64948c8882", "Differential PluginID": "f931c869-db64-4c3c-a564-a3c54fa6598d"},
+        {"Dataset Name": "User Attribute Definitions", "SchemaID": "0d1f2f4b-1b61-4373-9e33-a99a8d8dbfd9", "Full PluginID": "6fc12759-a014-4aec-8cdb-50ae6ff18530", "Differential PluginID": "1e11923c-267c-400b-bfb5-690ce15b2ff9"},
+        {"Dataset Name": "Enrollments and Withdrawals", "SchemaID": "05dc704d-2a2c-4bc6-8cf6-ee6b998dc2db", "Full PluginID": "88cfcc22-ce8b-4dab-8d42-2b9da92f29cf", "Differential PluginID": "b6660b04-aabe-4603-b415-c9520d7931fe"},
+        {"Dataset Name": "Content User Progress", "SchemaID": "2572cc01-77f8-481c-b2a6-907971ec2b83", "Full PluginID": "428ad0cb-6203-486d-be85-adb01c79578b", "Differential PluginID": "28905553-dab1-405a-9ecc-8e33ee467e7e"},
+        {"Dataset Name": "Outcomes Scale Definition", "SchemaID": "b3037586-4d6f-4069-a138-3d3069af9657", "Full PluginID": "b5504ee3-fb43-4bf2-83cc-23ecd0e0077b", "Differential PluginID": "df4f3513-fe31-4564-8f5c-453269ab1613"},
+        {"Dataset Name": "Discussion Posts", "SchemaID": "f7c47f8b-35f2-466c-95e9-04c315ec07ff", "Full PluginID": "bce64f34-acee-415e-aceb-e3a38ddf476f", "Differential PluginID": "8d3ee4fc-2bc1-4708-abbe-450651c7ad24"},
+        {"Dataset Name": "SCORM Interaction Objectives", "SchemaID": "fd6d617f-f3bf-498a-a45e-c8db9d1c3615", "Full PluginID": "fdec3d31-39f6-4615-9118-8c8dbe81ccbd", "Differential PluginID": "67795928-7917-4dec-b325-e8f308c178c2"},
+        {"Dataset Name": "Organizational Unit Ancestors", "SchemaID": "c0b0740f-896e-4afa-bfd9-81d8e43006d9", "Full PluginID": "61726e1b-bf42-4cab-910d-e5a226dec4f0", "Differential PluginID": "42846d2d-cce6-4215-ab21-4228a952a0db"},
+        {"Dataset Name": "Grade Objects", "SchemaID": "dacc3bad-81ed-4cec-975f-88598c660f02", "Full PluginID": "793668a8-2c58-4e5e-b263-412d28d5703f", "Differential PluginID": "e0856750-abf2-4f1b-9c3a-ad82a0cfedc1"},
+        {"Dataset Name": "Rubric Objects", "SchemaID": "c473942c-74e4-4ef2-83a6-638434a7db26", "Full PluginID": "841308a2-e761-498e-a4cc-0c3619791c19", "Differential PluginID": "11b43b24-560b-4ed4-bcba-5ae46d39b949"},
+        {"Dataset Name": "Survey Attempts", "SchemaID": "c597fc3e-b7ee-4d30-af3f-a7c825cc59f3", "Full PluginID": "10c06cbe-7171-4d6f-bd06-8330a93e5d2e", "Differential PluginID": "bd785b7d-5177-4529-8df2-48bf6affdaf1"},
+        {"Dataset Name": "Announcements", "SchemaID": "5b76e84f-189e-4c64-bcef-960c33b02a18", "Full PluginID": "d9f4035c-cb0f-45af-9646-08e46b341b1f", "Differential PluginID": "a698893e-b831-403c-9da1-b23170220d3e"},
+        {"Dataset Name": "CPD User Targets", "SchemaID": "4851cbfe-4fb4-47f0-b6c9-df4594cddae5", "Full PluginID": "cfe0ee2e-8376-48b8-9f53-8a34cd073255", "Differential PluginID": "64a40051-a995-4db1-805c-300b89130d6e"},
+        {"Dataset Name": "Content User Completion", "SchemaID": "b7f3452e-9cae-4172-ad03-f242f61d7c61", "Full PluginID": "1c50d2a2-990b-4897-a8c2-89a7a3202514", "Differential PluginID": "39c598e7-ac6e-475b-a42a-219c60cb6f9f"},
+        {"Dataset Name": "Outcome Registry Owners", "SchemaID": "cf6ef813-481d-45ac-8e4a-5df1e13863af", "Full PluginID": "a78aec93-5652-4b47-9a4e-865465b19ee6", "Differential PluginID": "77c494d0-08e2-4fab-8228-65e9d01b5aa2"},
+        {"Dataset Name": "Rubric Object Criteria", "SchemaID": "fac02315-302f-41b8-8b07-10c00f7a8d1d", "Full PluginID": "df537dc9-8358-4c28-9ab9-ddb8d364a9fc", "Differential PluginID": "17bec595-147d-4483-aee5-b52d7b8bd69a"},
+        {"Dataset Name": "Activity Feed Post Log", "SchemaID": "2f22beed-81c7-4d99-9935-70eb30610084", "Full PluginID": "8fd22e52-5a44-4c30-9f96-282ea0c04a8c", "Differential PluginID": "0dfe6caa-a8d4-4480-98be-00d74f62e7b9"},
+        {"Dataset Name": "Outcomes Assessed Checkpoints", "SchemaID": "645fc68b-04a5-4d42-8282-be71e54b2068", "Full PluginID": "928e8a7a-b07a-400a-8ecd-f00af6ace96c", "Differential PluginID": "c1900ac5-b2be-4c6a-9dd6-0a3ec19ea3b1"},
+        {"Dataset Name": "Intelligent Agent Run Log", "SchemaID": "748e30e9-7a04-449e-a557-d1bde27f6c0a", "Full PluginID": "c6045d32-c269-47ac-9d39-ce6be77c2015", "Differential PluginID": "23a9bff4-5c9a-446b-bd4d-46a924369997"},
+        {"Dataset Name": "Accommodations Profile Log", "SchemaID": "e1da7ff3-8578-4659-bb34-bb901d3a032c", "Full PluginID": "729711ba-ca1d-11eb-b8bc-0242ac130003", "Differential PluginID": "d0d3c00a-ca1a-11eb-b8bc-0242ac130003"},
+        {"Dataset Name": "Content Objects", "SchemaID": "ae3fe47d-0fee-43cb-94b3-7e9e15c4e14e", "Full PluginID": "7e16311c-d302-45da-afd9-98af90706ccb", "Differential PluginID": "ad64a823-099c-4f5d-ad56-0806daddc286"},
+        {"Dataset Name": "Media Objects", "SchemaID": "75c16f2d-a40f-42db-b8a4-314608320ccf", "Full PluginID": "377a2e14-09ba-407d-9836-7267592a79ab", "Differential PluginID": "c657a528-877d-40d9-b56a-3d3c5cf64ae1"},
+        {"Dataset Name": "Checklist Category Details", "SchemaID": "e0541d86-16f0-492a-8fc7-1495f5bc69a4", "Full PluginID": "d984b4b7-8bd2-456a-b082-6708b5454d23", "Differential PluginID": "b87cfe45-ed94-4264-8c12-2f5a3f1f4011"},
+        {"Dataset Name": "Question Relationships", "SchemaID": "7a1a456f-3bd9-403e-bf04-a384036da3ae", "Full PluginID": "1a0f6b1d-513c-474c-b7ce-0ee1fbea8d02", "Differential PluginID": "2127ae26-4ec6-4cfa-9dc7-fb741e3fbcfd"},
+        {"Dataset Name": "Calendar Events", "SchemaID": "c68bce39-87ba-4a44-84c7-a2e8a3dab424", "Full PluginID": "2fddff98-4a27-4d5f-83c8-1de977dd5a4e", "Differential PluginID": "d5a7d50d-2a82-41a1-9ccb-e806b6bfe865"},
+        {"Dataset Name": "Competency Activities", "SchemaID": "b544c470-29a8-449e-9a77-7825388fbba4", "Full PluginID": "a9887522-31cb-429c-90d1-5f2f31bf10b8", "Differential PluginID": "01d3b529-5929-4f54-8348-d9e92fdb726a"},
+        {"Dataset Name": "LTI Advantage Registration Audit", "SchemaID": "4f75c912-cb31-46a1-bf5c-61f983228f0c", "Full PluginID": "38e40e20-d76f-49e6-a466-53e44ef4c191", "Differential PluginID": "545a5c59-eff6-4701-8050-fff99762e549"},
+        {"Dataset Name": "Award Objects", "SchemaID": "56fa41c5-142f-4b99-885a-a738d0a09d54", "Full PluginID": "429f9046-49e5-4b29-8818-295ec3814593", "Differential PluginID": "99b375ed-9247-465b-9955-0313b800a07b"},
+        {"Dataset Name": "Attendance Registers", "SchemaID": "9b1086cd-e527-4dc5-8687-98484c1553a8", "Full PluginID": "86ca50e9-77ae-43a7-b646-8ce7794161a0", "Differential PluginID": "41b95b72-7ad9-4c49-acad-b7ffe103ef45"},
+        {"Dataset Name": "Outcomes Course Specific Scales", "SchemaID": "b4d68640-c259-481b-927c-90162f25fda1", "Full PluginID": "7d6998c0-4fc5-4582-b9a4-3e93e73c4c24", "Differential PluginID": "df5a8a7a-1fbc-4fad-bfc7-e928ec8073d8"},
+        {"Dataset Name": "Content Files Properties Log", "SchemaID": "c73385ca-9ac4-439a-a625-bb473f450b49", "Full PluginID": "7ddc7dcd-6da0-4119-ae03-a6f6d631d739", "Differential PluginID": "becb2eba-fecb-49f9-ada8-f06dd59ddc15"},
+        {"Dataset Name": "Quiz Attempts Log", "SchemaID": "a8e9249d-3412-4dff-bfd4-758c66fd2f55", "Full PluginID": "d1c3127a-b8a4-48ff-924d-eb5a6ac6a344", "Differential PluginID": "5a0f30dc-4294-4d78-9721-ad6fe0867915"},
+        {"Dataset Name": "Checklist Completions", "SchemaID": "decc7bbf-716c-44c1-9754-4356405fb9aa", "Full PluginID": "b45ebe15-e737-4794-8204-11c27c469bbc", "Differential PluginID": "c3f8eca0-d886-45f4-b18b-5c68e5ed2c93"},
+        {"Dataset Name": "Survey User Answer Responses", "SchemaID": "54d695fe-1c34-4fae-b1d5-a5923ca933a2", "Full PluginID": "20923295-981b-4d3c-8ab8-aa149abfdb45", "Differential PluginID": "0629be42-9f33-40c2-ad31-03f252b3689f"},
+        {"Dataset Name": "CPD Questions", "SchemaID": "9c0eba24-05e5-4ce5-a3cf-74c4b64b5b03", "Full PluginID": "56588f5b-e686-4cd1-bbc5-22a16a10f7eb", "Differential PluginID": "80b76771-d99b-4261-84da-33c1895a0378"},
+        {"Dataset Name": "Creator+ Practices Adoption", "SchemaID": "45f8a83e-78e0-4444-8d3f-d242e35c7158", "Full PluginID": "ef4e1555-0136-4aae-9003-d9c8ca3e074e", "Differential PluginID": "44af38cf-2e49-4789-b2cc-ad50d1c0c32b"},
+        {"Dataset Name": "Assignment Summary", "SchemaID": "16a36efe-0a07-4381-9570-6d8b391ac317", "Full PluginID": "d9923de9-de6a-41ea-a63e-e8fd771b7b93", "Differential PluginID": "fe38c3e3-33bc-41a0-843a-274614583925"},
+        {"Dataset Name": "Audio Video Processed", "SchemaID": "3282ebf6-d8e2-477d-9ce0-99feae4c9778", "Full PluginID": "39bbb587-62e4-4e77-8455-7556f74bc6fd", "Differential PluginID": "78a9687e-6407-43a2-91d0-60bd450c0b94"},
+        {"Dataset Name": "Auditor Relationships Log", "SchemaID": "a83525de-2ac8-4dd7-9e29-f6cd527e0984", "Full PluginID": "8c426cdc-0545-42a7-a292-83f297cf7427", "Differential PluginID": "1e0c21d7-7d3d-47c2-9fa2-0b00f3720371"},
+        {"Dataset Name": "Portfolio Evidence Categories", "SchemaID": "b3ada66d-100e-4cab-85ca-d6e103cfd673", "Full PluginID": "5b0d3990-7459-4a82-abe1-ee791d4d1bab", "Differential PluginID": "fa10ab40-f3c1-4774-a5e5-fae391b2901f"},
+        {"Dataset Name": "Question Answer Options", "SchemaID": "b3362aa3-f74d-4424-bf38-32c57a4d75a4", "Full PluginID": "005ebd00-00be-4830-8ff4-cb3853312585", "Differential PluginID": "bbeca5be-12b4-4bc8-8280-65ff4042d3fc"},
+        {"Dataset Name": "SCORM Visits", "SchemaID": "ff935065-2431-4382-8524-ac40af9831d8", "Full PluginID": "30d67ca7-8c8b-4dde-93ef-becd2ac2e223", "Differential PluginID": "44556e27-057d-451f-9227-2a6e1b30a19c"},
+        {"Dataset Name": "SCORM Objective Attempts", "SchemaID": "7430daa7-2b6a-4291-9409-25b77fceff74", "Full PluginID": "f8128ba4-5fa2-4768-ac3e-117f6390c6e0", "Differential PluginID": "2d3e86f5-22d6-47e9-85ea-93be2b992e98"},
+        {"Dataset Name": "Source Course Deploy History", "SchemaID": "c7e7e7c6-8d4a-4e3a-9b2e-1f2a3b4c5d6e", "Full PluginID": "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c", "Differential PluginID": "c1d2e3f4-a5b6-47a8-9b0c-1d2e3f4a5b6d"},
+        {"Dataset Name": "User Attribute Values", "SchemaID": "cc69b71f-5186-46c0-85ba-cb5e02e4fabc", "Full PluginID": "fdf8ec1c-cec8-4c2d-bdde-e1b212aeeaa6", "Differential PluginID": "d301362c-ec67-4713-9bd6-23a84a58a24d"},
+        {"Dataset Name": "Portfolio Evidence Objects", "SchemaID": "f7736415-b09e-4227-beed-1e559be1c40f", "Full PluginID": "07c902c8-15e0-4124-b0f5-b83f2a87fb24", "Differential PluginID": "6ed27c39-16ab-4211-a279-baad7e41b06e"},
+        {"Dataset Name": "CPD Categories", "SchemaID": "61f0b972-63f6-42e4-b7db-5e55795360c0", "Full PluginID": "c8c1b0a7-010c-4d73-ba9f-ff5f9bc21369", "Differential PluginID": "d0c6b4a1-d888-4b8e-99a5-a7fbbdee1fa0"},
+        {"Dataset Name": "CPD Methods", "SchemaID": "f4908e05-a9f0-413f-9c1b-01f44e04070d", "Full PluginID": "ffafb49a-895f-4d8d-94bf-b5143f639680", "Differential PluginID": "dbc31dff-e848-47b5-9f0b-84253ddfbeda"},
+        {"Dataset Name": "Checklist Item Details", "SchemaID": "49907f5d-4de2-48dd-838c-5b143a5565c5", "Full PluginID": "490ab141-85b5-40b0-995b-e07daea3ca23", "Differential PluginID": "de613ceb-0d60-46f4-ad57-366fddf10cd2"},
+        {"Dataset Name": "Outcomes Aligned to Tool Objects", "SchemaID": "ca9ba3aa-6207-41dc-a4cc-f75bf2b0ddda", "Full PluginID": "8b30bf00-35bb-4a54-86f1-c5fb11685907", "Differential PluginID": "57dfaca2-3e64-46a6-b71a-657e3a3e2fcf"},
+        {"Dataset Name": "Course Copy Logs", "SchemaID": "d3c500d0-c384-48b3-9770-70023a6b2ca7", "Full PluginID": "1bca1fba-4edf-4f88-9f9f-daee9ca3a0c5", "Differential PluginID": "4bb85466-3b1c-4a39-ae27-281d6c57ebc5"},
+        {"Dataset Name": "Course Awards", "SchemaID": "a89d5e34-b4d7-45ad-bbfa-7cc327aac819", "Full PluginID": "ebb6cb39-1d1c-4e97-8974-f658414d2272", "Differential PluginID": "e82ae523-ff2c-43e2-a274-14d2a852e86d"},
+        {"Dataset Name": "Portfolio Evidence Log", "SchemaID": "a5246ef3-66b2-4396-ba90-a145095ad5d2", "Full PluginID": "3d2f0520-0ac8-4e10-82e0-52c93de34586", "Differential PluginID": "790dfc62-1bae-4c99-aec4-403eae17c16c"},
+        {"Dataset Name": "Outcomes Set Course", "SchemaID": "dc669c5d-30a0-489e-9ee5-8ef1e0307376", "Full PluginID": "95912ea7-e30f-4b81-8f0e-ac232c651fbd", "Differential PluginID": "184f7a53-0a64-490a-9a9a-f808cc0ed1b3"},
+        {"Dataset Name": "Discussion Forums", "SchemaID": "fd57b574-f156-48ef-bc53-670e2b3d0f58", "Full PluginID": "8851ce21-6049-4004-9990-78c372bbd3b7", "Differential PluginID": "1fb4c71f-f9ee-4a71-9448-cf2df83d76f6"},
+        {"Dataset Name": "Attendance User Sessions", "SchemaID": "9e167b3b-7a0b-470c-ad58-8a19f9c79e22", "Full PluginID": "ad84c484-000b-48b4-85d2-ba5f781e9c18", "Differential PluginID": "82cc7e73-4bb0-49fb-90d0-66b8da08c8d0"},
+        {"Dataset Name": "Creator+ Practices Engagement", "SchemaID": "ebc1b345-76b7-4daa-b07d-f2a892e32c7f", "Full PluginID": "d8894e7f-06e6-4dc8-8810-585bfe61fdd5", "Differential PluginID": "d6ca0aed-16c7-4d9c-ada9-51332e4f99a5"},
+        {"Dataset Name": "Grade Schemes", "SchemaID": "bcd6ca2c-51b8-452f-a689-aacaf0e6726c", "Full PluginID": "74308e1e-b0c0-437c-b3df-3a19e3b6f305", "Differential PluginID": "8d1b1c9b-0ad6-419c-bed2-3a720fad7d81"},
+        {"Dataset Name": "SCORM Activities", "SchemaID": "7e93eb03-3df3-4135-8e4c-080372b80149", "Full PluginID": "396e9578-04e3-49b2-bf89-c17757e501de", "Differential PluginID": "ac416eb4-49c8-4599-b6a5-c5a640340a5b"},
+        {"Dataset Name": "LTI Link Migration Audit", "SchemaID": "804fff95-a6c7-48f2-9c57-6de4ed040d1e", "Full PluginID": "95951262-4878-4da9-86f0-188e5d1489b3", "Differential PluginID": "c36c12fc-2b76-4646-9214-e9ac2d223faa"},
+        {"Dataset Name": "Discussion Topics", "SchemaID": "92068fe7-3976-426c-8406-fa655977ae04", "Full PluginID": "0646bbe1-79af-48ef-89d9-91f677419259", "Differential PluginID": "454c1b3f-be89-49c9-a9e7-5d6d6365fb6a"},
+        {"Dataset Name": "Question Answers", "SchemaID": "0900c10e-1862-4b21-95d1-43eee5e51e1b", "Full PluginID": "faa8bab8-25f9-4921-ade5-becaedc526e8", "Differential PluginID": "a2b2c14e-3ffd-431c-b64f-53b577c781d9"},
+        {"Dataset Name": "SCORM Objectives", "SchemaID": "6e59993c-1708-4e36-bdae-2c440027823b", "Full PluginID": "51b028b4-d5ae-4784-b03e-18556b50e590", "Differential PluginID": "2ce9fd3b-cc9f-4d9f-8efc-1adfeb193c00"},
+        {"Dataset Name": "SCORM Interaction Attempts", "SchemaID": "4e723260-b2e7-41d0-a165-a975f1a5aabc", "Full PluginID": "74d0cf71-0ca6-485c-80e2-fe054b3d8e8c", "Differential PluginID": "538b3b7b-f0f3-419d-9b0c-ee856bb217bc"},
+        {"Dataset Name": "Organizational Unit Parents", "SchemaID": "4ed08e9f-d294-478c-912e-6b0ba4282e4a", "Full PluginID": "cb7caa4a-c35f-48d0-a9ae-59eefea299df", "Differential PluginID": "54be8f9d-b6ec-48e7-a18e-ab17c7fa8d42"},
+        {"Dataset Name": "CPD Job Targets", "SchemaID": "29acc27c-feac-4def-bdca-2c63e78c795e", "Full PluginID": "888ec8f2-1260-4099-87ba-31a4fff07e9d", "Differential PluginID": "b2b76329-74f6-4540-978f-d1f1831457aa"},
+        {"Dataset Name": "Course Access", "SchemaID": "2386cc16-2058-4495-a3ee-2148e7dddf0f", "Full PluginID": "e260902a-582c-48c9-8dd8-80aa7dfa6b76", "Differential PluginID": "01078704-43a5-45b4-a0ae-8fccdd89c6fd"},
+        {"Dataset Name": "Discussion Topic User Scores", "SchemaID": "dd162f3c-65f1-40f1-b81d-9a15c36c1cf2", "Full PluginID": "1c4add93-4905-4b24-b50d-a14fd10c971a", "Differential PluginID": "7a6fec74-d0e8-4c96-a5e6-f17fa999edba"},
+        {"Dataset Name": "User Logins", "SchemaID": "1c2ab1cc-c483-4657-906a-fed026be8750", "Full PluginID": "20794201-b8fe-4010-9197-9f4997f91531", "Differential PluginID": "49ac9b6f-8cbc-4a98-a95c-6ce0d89bca57"},
+        {"Dataset Name": "Rubric Assessment", "SchemaID": "d197b592-0c59-438c-8186-f42af6fddd35", "Full PluginID": "cd7fa762-841e-48c5-abd7-6379b84963bf", "Differential PluginID": "9e8d3ed5-f0f0-4834-a9e5-b64fe61beada"},
+        {"Dataset Name": "Question Library", "SchemaID": "c9edec37-1322-44ed-a922-f68d11472f6e", "Full PluginID": "5c0f2c70-4737-44ee-8780-be67bfa43594", "Differential PluginID": "708469f2-92ef-43f3-bdd3-dfef560e3432"},
+        {"Dataset Name": "Rubric Criteria Levels", "SchemaID": "a69d02ee-82d8-4246-8573-16c4723cc86c", "Full PluginID": "f2fe26f9-fd27-4e1f-bb14-09f339963519", "Differential PluginID": "5e4e0fa0-b4b7-4077-81b6-511c8b64cacd"},
+        {"Dataset Name": "Media Consumption Log", "SchemaID": "ce26f4a9-098b-40be-8e75-f5f9b8571972", "Full PluginID": "18652288-c12a-48e2-9b22-0556f4c5a2aa", "Differential PluginID": "4c910031-488b-443f-92d2-e94c1e6b21f3"},
+        {"Dataset Name": "Quiz User Answers", "SchemaID": "75939752-2645-4fd7-89ff-663881ccf1af", "Full PluginID": "810d9b4e-6f05-4f02-b32d-c86d78999db1", "Differential PluginID": "fade45b2-ea09-4f65-8c2e-cc3a8a6615f5"},
+        {"Dataset Name": "LTI Launches", "SchemaID": "4f47d05d-951c-4cc8-8627-edc1e4eff481", "Full PluginID": "f233257d-c0f9-431f-89ca-3d55f633eb67", "Differential PluginID": "d23a1754-c088-455c-a653-8bf6b601b093"},
+        {"Dataset Name": "Grade Objects Log", "SchemaID": "d725ab09-9369-4919-a8dc-7e8bd8c1acff", "Full PluginID": "1fa8ff9c-8702-46fc-a863-18ca6c2cc4d1", "Differential PluginID": "c8ccb9d4-8e5b-47d6-baea-b6d96a4877a5"},
+        {"Dataset Name": "Activity Feed Comment Log", "SchemaID": "2adc9fe9-bfb9-46b1-9302-af45d35fa293", "Full PluginID": "937ae575-58fd-46fe-9c38-728c6f29ec85", "Differential PluginID": "ad92a587-c296-4f73-b35d-b8a3785ead7c"},
+        {"Dataset Name": "Rubric Object Levels", "SchemaID": "a1abc89e-5458-4127-8756-c8df9d859992", "Full PluginID": "bbe237cd-5afa-4ad1-b936-4d3404b9a6ca", "Differential PluginID": "26038f5a-539d-4933-86cb-fcb1bbf24cb7"},
+        {"Dataset Name": "Grade Results", "SchemaID": "4a8f154b-9a55-4782-af80-9360d56ff3c9", "Full PluginID": "9d8a96b4-8145-416d-bd18-11402bc58f8d", "Differential PluginID": "3c44270c-9224-4e61-abee-696ba1b4882f"},
+        {"Dataset Name": "Organizational Unit Recent Access", "SchemaID": "e87a0eed-992d-475a-8e82-3598f939d11e", "Full PluginID": "41783af1-7030-4453-b342-89d44bbd8c5b", "Differential PluginID": "9b93ed8b-1b12-45a8-8277-adcbfeabe48a"},
+        {"Dataset Name": "Assignment Special Access", "SchemaID": "f4664070-bd96-4d85-9f17-0da6a91dddf8", "Full PluginID": "fc349213-2f2f-4602-bf92-448bdec6b858", "Differential PluginID": "05277094-834b-4688-b5b9-f1f47b42386e"},
+        {"Dataset Name": "Outcomes Demonstrations", "SchemaID": "2e5f74b3-be2e-4cd5-afe8-d6fb8c31c9c3", "Full PluginID": "b07cae00-72c4-43e5-b083-4da09e425e17", "Differential PluginID": "837d26ec-25c3-4ace-8afd-5084ca98aca7"},
+        {"Dataset Name": "Grade Schemes", "SchemaID": "bcd6ca2c-51b8-452f-a689-aacaf0e6726c", "Full PluginID": "74308e1e-b0c0-437c-b3df-3a19e3b6f305", "Differential PluginID": "8d1b1c9b-0ad6-419c-bed2-3a720fad7d81"}
     ]
 
-    # 2. Build DataFrame from hard-coded data
     ref_df = pd.DataFrame(hardcoded)
 
-    # 3. Detect any net-new datasets from the scraped df
+    # Auto-detect new datasets from scraper
     if not df.empty and 'dataset_name' in df.columns:
-        scraped_names = set(df['dataset_name'].str.strip())
-        known_names = set(ref_df['Dataset Name'].str.strip())
+        scraped_names = set(df['dataset_name'].str.strip().str.lower())
+        known_names = set(ref_df['Dataset Name'].str.strip().str.lower())
         new_names = sorted(scraped_names - known_names)
 
         if new_names:
@@ -2518,7 +2625,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
             })
             ref_df = pd.concat([ref_df, new_rows], ignore_index=True)
 
-    # 4. Final display
+    # Final sort and display
     ref_df = ref_df.sort_values("Dataset Name").reset_index(drop=True)
 
     st.dataframe(
@@ -2533,9 +2640,8 @@ def render_dataset_id_reference(df: pd.DataFrame):
         }
     )
 
-    st.success(f"✅ Showing {len(ref_df)} datasets")
-    st.info("💡 Hard-coded IDs are stable. New datasets discovered by the scraper appear with placeholder IDs.")
-
+    st.success(f"✅ Showing {len(ref_df)} datasets (hard-coded + newly discovered)")
+    st.info("💡 Hard-coded IDs are stable. New datasets from scraping appear with placeholder IDs.")
 def render_relationship_map(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the relationship visualization with multiple graph types."""
     st.header("🗺️ Relationship Map")
