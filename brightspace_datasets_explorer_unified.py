@@ -5760,7 +5760,7 @@ def main():
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)
     elif view == "📋 Dataset ID Reference":
-        render_dataset_id_reference()
+        render_dataset_id_reference(df)   # passing df
     # routes to appropriate view
     if view == "📊 Dashboard":
         render_dashboard(df)
