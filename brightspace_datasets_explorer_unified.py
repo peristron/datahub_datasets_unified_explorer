@@ -2410,55 +2410,38 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     st.error("Incorrect password.")
 
 #------------------------------
-        # cross-links (advanced mode only)
-        if is_advanced:
-            st.divider()
-            st.markdown("### 🔗 Related Tools")
+            # cross-links (advanced mode only)
+            if is_advanced:
+                st.divider()
+                st.markdown("### 🔗 Related Tools")
 
-            st.link_button(
-                "🧠 Signal Foundry",
-                "https://signalfoundry.streamlit.app/",
-                help=(
-                    "An advanced NLP engine for unstructured data. "
-                    "Use this to analyze Discussion Posts, Survey Comments, and Assignment Feedback."
-                )
-            )
-
-            # New: Roles & Permissions Exporter
-            st.link_button(
-                "🔐 Roles & Permissions Exporter",
-                "https://exporterforrolesandpermissions.streamlit.app/",
-                help=(
-                    "Specialized tool for exporting detailed role permission checklists. "
-                    "Ideal companion when working with the 'Role Details' dataset. "
-                    "Ask your TAM for the access code."
-                )
-            )
-
-#------------------------------
-            c_t1, c_t2 = st.columns(2)
-            with c_t1:
                 st.link_button(
-                    "🔎 CSV Query Tool",
-                    "https://csvexpl0rer.streamlit.app/",
-                    help="Run SQL queries on CSV files."
-                )
-            with c_t2:
-                st.link_button(
-                    "✂️ CSV Splitter",
-                    "https://csvsplittertool.streamlit.app/",
-                    help="Split large CSVs into smaller chunks."
+                    "🧠 Signal Foundry",
+                    "https://signalfoundry.streamlit.app/",
+                    help=(
+                        "An advanced NLP engine for unstructured data. "
+                        "Use this to analyze Discussion Posts, Survey Comments, and Assignment Feedback."
+                    )
                 )
 
-            # New: Dataset ID Reference for Power Users
-            if st.button("📋 Dataset ID Reference (Schema + Plugin IDs)", use_container_width=True):
-                render_dataset_id_reference()
-    return view, selected_datasets
+                # New: Dataset ID Reference (Phase 1)
+                if st.button("📋 Dataset ID Reference", use_container_width=True):
+                    render_dataset_id_reference()
 
-
-def render_dashboard(df: pd.DataFrame):
-    """renders the main dashboard with overview statistics and intelligent search."""
-    st.header("📊 Datahub Datasets Overview")
+                # Existing CSV tools
+                c_t1, c_t2 = st.columns(2)
+                with c_t1:
+                    st.link_button(
+                        "🔎 CSV Query Tool",
+                        "https://csvexpl0rer.streamlit.app/",
+                        help="Run SQL queries on CSV files."
+                    )
+                with c_t2:
+                    st.link_button(
+                        "✂️ CSV Splitter",
+                        "https://csvsplittertool.streamlit.app/",
+                        help="Split large CSVs into smaller chunks."
+                    )
 
     # How to use section
 #------------------------------
