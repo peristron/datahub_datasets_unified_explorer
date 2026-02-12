@@ -5523,7 +5523,7 @@ def render_udf_flattener(df: pd.DataFrame):
 # =============================================================================
 
 def render_dashboard(df: pd.DataFrame):
-    """Main dashboard view with metrics, search, hubs, orphans, etc."""
+    """Main dashboard view with metrics, search, hubs, orphans, and Path Finder."""
     st.header("📊 Dashboard")
 
     is_advanced = st.session_state.get('experience_mode', 'basic') == 'advanced'
@@ -5549,7 +5549,9 @@ def render_dashboard(df: pd.DataFrame):
 
     st.divider()
 
-    # Intelligent search
+    # ---------------------------------------------------------
+    # 🔍 Intelligent Search
+    # ---------------------------------------------------------
     st.subheader("🔍 Intelligent Search")
 
     all_datasets = sorted(df['dataset_name'].unique()) if 'dataset_name' in df.columns else []
@@ -5560,7 +5562,7 @@ def render_dashboard(df: pd.DataFrame):
     col_search, col_stats = st.columns([3, 1])
 
     with col_search:
-        # --- FIX APPLIED HERE: added key="dashboard_main_search_box" ---
+        # Key added to prevent StreamlitDuplicateElementKey error
         search_selection = st.selectbox(
             "Search for a Dataset or Column",
             options=search_index,
@@ -5574,7 +5576,6 @@ def render_dashboard(df: pd.DataFrame):
         st.divider()
 
         search_type = "dataset" if "📦" in search_selection else "column"
-        # Safe split to handle cases where format might differ slightly
         parts = search_selection.split(" ", 1)
         term = parts[1] if len(parts) > 1 else search_selection
 
@@ -5602,41 +5603,27 @@ def render_dashboard(df: pd.DataFrame):
 
         else:
             st.markdown(f"### Datasets containing column: `{term}`")
-
             hits = df[df['column_name'] == term]['dataset_name'].unique() if 'column_name' in df.columns else []
 
             if len(hits) > 0:
                 st.info(f"Found **{len(hits)}** datasets containing `{term}`")
 
                 for ds_name in sorted(hits):
-                    # Robust check to ensure dataset exists
                     ds_rows = df[df['dataset_name'] == ds_name]
-                    if ds_rows.empty:
-                        continue
-                        
+                    if ds_rows.empty: continue
                     ds_meta = ds_rows.iloc[0]
                     category = ds_meta.get('category', 'Unknown')
 
                     with st.expander(f"📦 {ds_name}  ({category})"):
                         c_info, c_rel = st.columns([2, 1])
-
                         with c_info:
                             desc = ds_meta.get('dataset_description', '')
-                            if desc:
-                                st.caption(f"💡 {desc}")
-                            if ds_meta.get('url'):
-                                st.markdown(f"[View Documentation]({ds_meta['url']})")
+                            if desc: st.caption(f"💡 {desc}")
+                            if ds_meta.get('url'): st.markdown(f"[View Documentation]({ds_meta['url']})")
 
-                            col_row = df[
-                                (df['dataset_name'] == ds_name) &
-                                (df['column_name'] == term)
-                            ]
+                            col_row = df[(df['dataset_name'] == ds_name) & (df['column_name'] == term)]
                             st.caption("Column Details:")
-                            st.dataframe(
-                                col_row[['data_type', 'description', 'key']],
-                                hide_index=True,
-                                use_container_width=True
-                            )
+                            st.dataframe(col_row[['data_type', 'description', 'key']], hide_index=True, use_container_width=True)
 
                         with c_rel:
                             show_relationship_summary(df, ds_name)
@@ -5644,13 +5631,14 @@ def render_dashboard(df: pd.DataFrame):
                 st.warning("No matches found.")
 
     else:
-        # Default Dashboard View (hubs + orphans)
+        # ---------------------------------------------------------
+        # Default Dashboard View (Hubs + Orphans)
+        # ---------------------------------------------------------
         st.divider()
         col_hubs, col_orphans = st.columns(2)
 
         with col_hubs:
             st.subheader("🌟 Most Connected Datasets ('Hubs')")
-
             with st.expander("ℹ️ Why are these numbers so high?", expanded=False):
                 st.caption("""
 **High Outgoing (Refers To):** This dataset contains \"Super Keys\" like `OrgUnitId` or `UserId`
@@ -5682,7 +5670,6 @@ that almost every other table links to.
             if orphans:
                 st.warning(f"{len(orphans)} datasets have no detected relationships")
                 st.caption("These tables usually lack standard keys like `OrgUnitId` or `UserId`.")
-
                 orphan_details = (
                     df[df['dataset_name'].isin(orphans)]
                     [['dataset_name', 'category', 'dataset_description']]
@@ -5690,7 +5677,6 @@ that almost every other table links to.
                     .sort_values('dataset_name')
                     .rename(columns={'dataset_description': 'description'})
                 )
-
                 st.dataframe(
                     orphan_details,
                     column_config={
@@ -5704,7 +5690,9 @@ that almost every other table links to.
             else:
                 st.success("All datasets have at least one connection")
 
-        # Category chart (advanced only)
+        # ---------------------------------------------------------
+        # Advanced Features (Category Chart & Path Finder)
+        # ---------------------------------------------------------
         if is_advanced:
             st.divider()
             st.subheader("📁 Category Breakdown")
@@ -5717,7 +5705,6 @@ that almost every other table links to.
             cat_stats = cat_stats.sort_values('Datasets', ascending=False)
 
             col_chart, col_table = st.columns([2, 1])
-
             with col_chart:
                 fig = px.bar(
                     cat_stats, x='Category', y='Datasets',
@@ -5726,9 +5713,171 @@ that almost every other table links to.
                     color_continuous_scale='Blues'
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
             with col_table:
                 st.dataframe(cat_stats, use_container_width=True, hide_index=True)
+
+            # ---------------------------------------------------------
+            # 🛤️ Path Finder (Restored Functionality)
+            # ---------------------------------------------------------
+            st.divider()
+            st.subheader("🛤️ Path Finder")
+            st.caption("Find all valid join paths between two datasets.")
+
+            st.info(
+                "A **path** is a chain of JOINs connecting two datasets that don't directly share a key. "
+                "Each **hop** is one JOIN through an intermediate table. Shorter paths generally produce "
+                "cleaner queries with fewer potential data issues.\n\n"
+                "**Example:** `Quiz Attempts` → `Users` → `User Enrollments` is a 2-hop path, "
+                "joining through the `Users` table via `UserId`.",
+                icon="💡"
+            )
+
+            # Reusing all_datasets computed earlier
+            col_from, col_to = st.columns(2)
+            with col_from:
+                source_ds = st.selectbox("From Dataset", all_datasets, index=None, placeholder="Select source...", key="path_source")
+            with col_to:
+                target_ds = st.selectbox("To Dataset", all_datasets, index=None, placeholder="Select target...", key="path_target")
+
+            # Row 2: Configuration & Action
+            col_hops, col_limit, col_find = st.columns([1, 1, 2])
+            
+            with col_hops:
+                max_hops = st.number_input(
+                    "Max Hops",
+                    min_value=1,
+                    max_value=6,
+                    value=4,
+                    help="Max number of joins allowed (depth)."
+                )
+            with col_limit:
+                top_k = st.number_input(
+                    "Results to Show",
+                    min_value=1,
+                    max_value=50,
+                    value=5,
+                    help="Number of paths to display."
+                )
+                use_core_keys_only = st.checkbox(
+                    "Use core keys only (UserId / OrgUnitId)",
+                    value=False,
+                    help=(
+                        "When enabled, restricts paths to joins on UserId and OrgUnitId. "
+                        "This biases results toward dimension-style paths through Users / Org Units."
+                    )
+                )
+            with col_find:
+                st.write("")  # Spacer for alignment
+                st.write("")
+                find_path = st.button(
+                    "Find Paths",
+                    type="primary",
+                    use_container_width=True
+                )
+            
+            # Logic: Calculate Paths
+            if find_path and source_ds and target_ds:
+                if source_ds == target_ds:
+                    st.warning("Please select two different datasets.")
+                else:
+                    # Decide which join keys are allowed for this search
+                    allowed_keys = ['UserId', 'OrgUnitId'] if use_core_keys_only else None
+
+                    with st.spinner("Calculating network paths..."):
+                        # Assumes find_all_paths exists in your file
+                        paths = find_all_paths(
+                            df,
+                            source_ds,
+                            target_ds,
+                            cutoff=max_hops,
+                            limit=top_k,
+                            allowed_keys=allowed_keys
+                        )
+                    
+                    # Store in session state to persist across reruns
+                    st.session_state['path_finder_results'] = {
+                        'paths': paths,
+                        'source_ds': source_ds,
+                        'target_ds': target_ds,
+                        'max_hops': max_hops,
+                        'use_core_keys_only': use_core_keys_only
+                    }
+            
+            # Logic: Display Results
+            if 'path_finder_results' in st.session_state:
+                results = st.session_state['path_finder_results']
+                paths = results['paths']
+                
+                if paths:
+                    count = len(paths)
+                    st.success(f"Found top {count} shortest path(s) within {results['max_hops']} hops.")
+                    
+                    for i, path in enumerate(paths):
+                        hops = len(path) - 1
+                        label = f"Option {i+1}: {hops} Join(s)"
+                        if i == 0:
+                            label += " (Shortest)"
+                        
+                        with st.expander(label, expanded=(i == 0)):
+                            # Breadcrumb visual
+                            st.markdown(" → ".join([f"**{p}**" for p in path]))
+                            
+                            # Detailed breakdown
+                            # Assumes get_path_details exists
+                            path_details = get_path_details(df, path)
+                            st.markdown("---")
+                            for step in path_details:
+                                st.markdown(
+                                    f"- `{step['from']}` joins to `{step['to']}` on column `{step['column']}`"
+                                )
+
+                            # Generate SQL for this specific path
+                            st.markdown("#### Generate Query for This Path")
+                            col_sql_dialect, col_sql_btn = st.columns([2, 1])
+                            with col_sql_dialect:
+                                path_sql_dialect = st.selectbox(
+                                    "Dialect",
+                                    ["T-SQL", "Snowflake", "PostgreSQL"],
+                                    key=f"path_sql_dialect_{i}"
+                                )
+                            with col_sql_btn:
+                                st.write("")  # spacer
+                                gen_sql_for_path = st.button(
+                                    "Generate SQL",
+                                    key=f"gen_sql_for_path_{i}",
+                                    use_container_width=True
+                                )
+
+                            if gen_sql_for_path:
+                                # Assumes generate_sql_for_path exists
+                                sql_from_path = generate_sql_for_path(
+                                    path, df, dialect=path_sql_dialect
+                                )
+                                st.code(sql_from_path, language="sql")
+                            
+                            # Generate Pandas Code
+                            st.markdown("#### Generate Pandas Code for This Path")
+                            gen_pandas_for_path = st.button(
+                                "Generate Pandas",
+                                key=f"gen_pandas_for_path_{i}",
+                                use_container_width=True
+                            )
+
+                            if gen_pandas_for_path:
+                                # Assumes generate_pandas_for_path exists
+                                pandas_from_path = generate_pandas_for_path(path, df)
+                                st.code(pandas_from_path, language="python")
+                else:
+                    st.error(
+                        f"No path found within {results['max_hops']} hops. "
+                        f"{'Try disabling the core key filter or increasing Max Hops.' if results['use_core_keys_only'] else 'These datasets may be unrelated or require a deeper search.'}"
+                    )
+                
+                # Add reset button
+                if st.button("Reset Search"):
+                    if 'path_finder_results' in st.session_state:
+                        del st.session_state['path_finder_results']
+                    st.rerun()
 
 #------------------------------
 def main():
