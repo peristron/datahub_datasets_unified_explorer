@@ -5912,12 +5912,9 @@ def main():
     # Show scrape success message if it exists
     if st.session_state.get('scrape_msg'):
         st.success(st.session_state['scrape_msg'])
-        st.session_state['scrape_msg'] = None    # Show scrape success message if it exists
-    if st.session_state.get('scrape_msg'):
-        st.success(st.session_state['scrape_msg'])
         st.session_state['scrape_msg'] = None
 
-    # Load data from disk (or empty on first run)
+    # Single source of truth for loading data (completes Change 1)
     df = load_data()
 
     # Prefer fresh data from session_state after a successful scrape
