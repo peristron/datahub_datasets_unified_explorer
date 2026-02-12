@@ -5920,7 +5920,7 @@ def main():
         st.success(st.session_state['scrape_msg'])
         st.session_state['scrape_msg'] = None
 
-    # Single source of truth for loading data (completes Change 1)
+    # Single source of truth for loading data
     df = load_data()
 
     # Prefer fresh data from session_state after a successful scrape
