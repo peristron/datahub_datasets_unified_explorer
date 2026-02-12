@@ -5778,6 +5778,7 @@ def main():
         return
 
     # Route to the selected view
+    # (The duplicate block below this one has been removed)
     if view == "📊 Dashboard":
         render_dashboard(df)
     elif view == "🗺️ Relationship Map":
@@ -5799,31 +5800,7 @@ def main():
     elif view == "🤖 AI Assistant":
         render_ai_assistant(df, selected_datasets)
     elif view == "📋 Dataset ID Reference":
-        render_dataset_id_reference(df)   # passing df
-    # routes to appropriate view
-    if view == "📊 Dashboard":
-        render_dashboard(df)
-    elif view == "🗺️ Relationship Map":
-        render_relationship_map(df, selected_datasets)
-    elif view == "📋 Schema Browser":
-        render_schema_browser(df)
-    elif view == "📚 KPI Recipes":
-        render_kpi_recipes(df)
-    elif view == "⚡ SQL Builder":
-        render_sql_builder(df, selected_datasets)
-    elif view == "🔀 SQL Translator":
-        render_sql_translator()
-    elif view == "🔧 UDF Flattener":
-        render_udf_flattener(df)
-#------------------------------
-    elif view == "✨ Schema Diff":
-        render_schema_diff(df)
-#------------------------------
-    elif view == "🌐 3D Explorer":
-        render_3d_explorer(df)
-    elif view == "🤖 AI Assistant":
-        render_ai_assistant(df, selected_datasets)
-
+        render_dataset_id_reference(df)
 
 if __name__ == "__main__":
     main()
