@@ -694,16 +694,22 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
 
 #------------------------------
 
-@st.cache_data
+@st.cache_data(ttl=60)  # Cache for 60 seconds to reduce disk I/O on every rerun
 def load_data() -> pd.DataFrame:
-    """Loads from disk only if the file exists and is valid. Returns empty df otherwise."""
+    """Loads the latest metadata. Prefers fresh data from session_state, then falls back to disk."""
+    # 1. Prefer fresh data from a recent scrape
+    if 'current_df' in st.session_state:
+        return st.session_state.current_df.copy()   # .copy() prevents accidental mutation
+
+    # 2. Fall back to disk
     if os.path.exists('dataset_metadata.csv') and os.path.getsize('dataset_metadata.csv') > 100:
         try:
-            return pd.read_csv('dataset_metadata.csv', encoding='utf-8').fillna('')
+            df = pd.read_csv('dataset_metadata.csv', encoding='utf-8').fillna('')
+            return df
         except Exception as e:
             logger.error(f"Failed to load metadata CSV: {e}")
-            return pd.DataFrame()
-    return pd.DataFrame()   # Clean first-time or deleted CSV state
+    
+    return pd.DataFrame()
 
 
 #------------------------------
