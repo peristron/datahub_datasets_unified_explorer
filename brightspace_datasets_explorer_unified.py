@@ -5521,11 +5521,12 @@ def render_udf_flattener(df: pd.DataFrame):
 # =============================================================================
 # 11. main orchestrator
 # =============================================================================
+
 def render_dashboard(df: pd.DataFrame):
     """Main dashboard view with metrics, search, hubs, orphans, etc."""
     st.header("📊 Dashboard")
 
-    is_advanced = st.session_state['experience_mode'] == 'advanced'
+    is_advanced = st.session_state.get('experience_mode', 'basic') == 'advanced'
 
     # Top metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -5559,19 +5560,23 @@ def render_dashboard(df: pd.DataFrame):
     col_search, col_stats = st.columns([3, 1])
 
     with col_search:
+        # --- FIX APPLIED HERE: added key="dashboard_main_search_box" ---
         search_selection = st.selectbox(
             "Search for a Dataset or Column",
             options=search_index,
             index=None,
             placeholder="Type to search (e.g. 'Users', 'OrgUnitId')...",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="dashboard_main_search_box"
         )
 
     if search_selection:
         st.divider()
 
         search_type = "dataset" if "📦" in search_selection else "column"
-        term = search_selection.split(" ", 1)[1]
+        # Safe split to handle cases where format might differ slightly
+        parts = search_selection.split(" ", 1)
+        term = parts[1] if len(parts) > 1 else search_selection
 
         if search_type == "dataset":
             st.markdown(f"### Results for Dataset: **{term}**")
@@ -5604,7 +5609,12 @@ def render_dashboard(df: pd.DataFrame):
                 st.info(f"Found **{len(hits)}** datasets containing `{term}`")
 
                 for ds_name in sorted(hits):
-                    ds_meta = df[df['dataset_name'] == ds_name].iloc[0]
+                    # Robust check to ensure dataset exists
+                    ds_rows = df[df['dataset_name'] == ds_name]
+                    if ds_rows.empty:
+                        continue
+                        
+                    ds_meta = ds_rows.iloc[0]
                     category = ds_meta.get('category', 'Unknown')
 
                     with st.expander(f"📦 {ds_name}  ({category})"):
@@ -5719,6 +5729,7 @@ that almost every other table links to.
 
             with col_table:
                 st.dataframe(cat_stats, use_container_width=True, hide_index=True)
+
 #------------------------------
 def main():
     """main entry point that orchestrates the application."""
