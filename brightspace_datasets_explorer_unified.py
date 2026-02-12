@@ -682,8 +682,15 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
     # persist to csv
     df.to_csv('dataset_metadata.csv', index=False)
     logger.info(f"Scraping complete. Saved {len(df)} rows.")
-    return df
 
+    # Store fresh data in session state and clear cache
+    st.session_state['current_df'] = df.copy()
+    st.session_state['scrape_msg'] = f"Success: {df['dataset_name'].nunique()} datasets loaded"
+    
+    load_data.clear()   # Force reload on next run
+    st.rerun()
+    
+    return df   # Keep return for backward compatibility if needed elsewhere
 
 #------------------------------
 
