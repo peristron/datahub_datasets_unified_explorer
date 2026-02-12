@@ -5883,7 +5883,29 @@ that almost every other table links to.
 def main():
     """main entry point that orchestrates the application."""
 
+    # ──────────────────────────────────────────────────────────────
+    # Development Banner (shows on every page until dismissed)
+    # ──────────────────────────────────────────────────────────────
+    if 'dev_banner_dismissed' not in st.session_state:
+        st.session_state.dev_banner_dismissed = False
+
+    if not st.session_state.dev_banner_dismissed:
+        col_msg, col_btn = st.columns([9, 1])
+        with col_msg:
+            st.info(
+                "🚧 **This application is under active development.** "
+                "We're making major changes soon. Features may be unstable or change without notice.",
+                icon="⚠️"
+            )
+        with col_btn:
+            if st.button("✕", help="Dismiss this message", key="dismiss_dev_banner"):
+                st.session_state.dev_banner_dismissed = True
+                st.rerun()
+
     # Show scrape success message if it exists
+    if st.session_state.get('scrape_msg'):
+        st.success(st.session_state['scrape_msg'])
+        st.session_state['scrape_msg'] = None    # Show scrape success message if it exists
     if st.session_state.get('scrape_msg'):
         st.success(st.session_state['scrape_msg'])
         st.session_state['scrape_msg'] = None
