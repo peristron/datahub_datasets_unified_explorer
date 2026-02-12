@@ -5894,7 +5894,7 @@ def main():
         with col_msg:
             st.info(
                 "🚧 **This application is under active development.** "
-                "We're making major changes soon. Features may be unstable or change without notice.",
+                "We're making major changes soon. Some features may be unstable or change without notice (just check back in a little while if you see an issue).",
                 icon="⚠️"
             )
         with col_btn:
