@@ -3163,31 +3163,40 @@ def render_schema_browser(df: pd.DataFrame):
 
     with col_search:
         st.subheader("🔍 Column Search")
-        search = st.text_input("Find Column", placeholder="e.g. OrgUnitId, UserId...")
+        
+        # Live predictive search — updates as you type
+        search = st.text_input(
+            "Find Column", 
+            placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
+            help="Results update automatically as you type"
+        )
 
-#------------------------------
-#------------------------------
         if search:
             escaped_search = re.escape(search)
             hits = df[
                 df['column_name'].str.contains(escaped_search, case=False, na=False, regex=True) |
                 df['description'].str.contains(escaped_search, case=False, na=False, regex=True)
-            ]
-            if not hits.empty:
-                st.success(f"Found in **{hits['dataset_name'].nunique()}** datasets")
+            ].copy()
 
+            if not hits.empty:
+                st.success(f"Found **{len(hits)}** matching columns across **{hits['dataset_name'].nunique()}** datasets")
+
+                # Group by dataset for clean expandable results
                 for ds_name in sorted(hits['dataset_name'].unique()):
                     ds_hits = hits[hits['dataset_name'] == ds_name]
-                    with st.expander(f"📦 {ds_name} ({len(ds_hits)} matches)"):
+                    with st.expander(f"📦 {ds_name} ({len(ds_hits)} matches)", expanded=len(ds_hits) <= 8):
                         display_cols = ['column_name', 'data_type', 'description', 'key']
                         available_cols = [c for c in display_cols if c in ds_hits.columns]
                         st.dataframe(
                             ds_hits[available_cols],
                             hide_index=True,
-                            use_container_width=True
+                            use_container_width=True,
+                            height=min(300, len(ds_hits) * 35)
                         )
             else:
                 st.warning("No matches found.")
+        else:
+            st.caption("Start typing a column name or keyword to see live results")
 
     with col_browse:
         st.subheader("📂 Browse by Dataset")
@@ -3201,7 +3210,6 @@ def render_schema_browser(df: pd.DataFrame):
         )
 
         if selected_ds_list:
-#------------------------------
             # shared column analysis when 2+ datasets selected
             if len(selected_ds_list) >= 2:
                 with st.expander("🔗 Shared Column Analysis", expanded=True):
@@ -3352,7 +3360,7 @@ def render_schema_browser(df: pd.DataFrame):
                     mime="text/csv",
                     help="Download this dataset's columns as CSV for offline use."
                 )
-#------------------------------
+                
                 st.divider()
                 
                 # Mock Data Generator Logic
@@ -3427,7 +3435,7 @@ def render_schema_browser(df: pd.DataFrame):
                             file_name=f"MOCK_{selected_ds.replace(' ', '_')}.csv",
                             mime="text/csv"
                         )
-#------------------------------
+                
                 col_pk, col_fk = st.columns(2)
 
                 with col_pk:
