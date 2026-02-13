@@ -3164,21 +3164,21 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # ── Robust live search (matches the behavior of your Dashboard search) ──
-        if "column_search" not in st.session_state:
-            st.session_state.column_search = ""
+        # ── Ultra-reliable live search (matches Dashboard behavior) ──
+        if "schema_column_search" not in st.session_state:
+            st.session_state.schema_column_search = ""
 
         search = st.text_input(
             "Find Column",
-            value=st.session_state.column_search,
+            value=st.session_state.schema_column_search,
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
-            key="column_search_input",           # stable key
+            key="schema_column_search_input",          # completely unique key
             help="Results update automatically as you type"
         )
 
-        # Force rerun when the user types (this is what makes it truly live)
-        if search != st.session_state.column_search:
-            st.session_state.column_search = search
+        # Force immediate rerun on every keystroke
+        if search != st.session_state.schema_column_search:
+            st.session_state.schema_column_search = search
             st.rerun()
 
         if search:
