@@ -3165,13 +3165,22 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # ── Live search (this pattern works in your Dashboard) ──
+        # ── Fully controlled live search (this pattern works reliably) ──
+        if "schema_column_search" not in st.session_state:
+            st.session_state.schema_column_search = ""
+
         search = st.text_input(
             "Find Column",
+            value=st.session_state.schema_column_search,
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
-            key="schema_browser_column_search",   # ← very unique key
-            help="Type to see results instantly"
+            key="schema_column_search_input",
+            help="Results update automatically as you type"
         )
+
+        # forces a rerun on every keystroke
+        if search != st.session_state.schema_column_search:
+            st.session_state.schema_column_search = search
+            st.rerun()
 
         if search:
             escaped_search = re.escape(search)
