@@ -3164,10 +3164,11 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # Live predictive search — updates as you type
+        # Live predictive search — updates on every keystroke
         search = st.text_input(
             "Find Column", 
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
+            key="live_column_search",                    # ← This was the missing piece
             help="Results update automatically as you type"
         )
 
