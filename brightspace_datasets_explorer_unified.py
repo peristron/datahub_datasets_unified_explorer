@@ -6,6 +6,7 @@
 # =============================================================================
 
 import streamlit as st
+st.cache_data.clear()   # temporary debug line
 import pandas as pd
 import os
 import requests
