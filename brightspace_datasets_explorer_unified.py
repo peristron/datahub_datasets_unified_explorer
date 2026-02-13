@@ -3164,21 +3164,22 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # ── Robust live predictive search (updates on every keystroke) ──
-        if "live_column_search" not in st.session_state:
-            st.session_state.live_column_search = ""
+        # ── Robust live search (matches the behavior of your Dashboard search) ──
+        if "column_search" not in st.session_state:
+            st.session_state.column_search = ""
 
         search = st.text_input(
             "Find Column",
-            value=st.session_state.live_column_search,
+            value=st.session_state.column_search,
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
-            key="live_column_search_widget",           # unique key
+            key="column_search_input",           # stable key
             help="Results update automatically as you type"
         )
 
-        # Sync typed value back to session_state (forces rerun on every keystroke)
-        if search != st.session_state.live_column_search:
-            st.session_state.live_column_search = search
+        # Force rerun when the user types (this is what makes it truly live)
+        if search != st.session_state.column_search:
+            st.session_state.column_search = search
+            st.rerun()
 
         if search:
             escaped_search = re.escape(search)
@@ -3190,7 +3191,6 @@ def render_schema_browser(df: pd.DataFrame):
             if not hits.empty:
                 st.success(f"Found **{len(hits)}** matching columns across **{hits['dataset_name'].nunique()}** datasets")
 
-                # Group by dataset for clean expandable results
                 for ds_name in sorted(hits['dataset_name'].unique()):
                     ds_hits = hits[hits['dataset_name'] == ds_name]
                     with st.expander(f"📦 {ds_name} ({len(ds_hits)} matches)", expanded=len(ds_hits) <= 8):
