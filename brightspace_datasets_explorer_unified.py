@@ -3164,13 +3164,21 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # Live predictive search — updates on every keystroke
+        # ── Robust live predictive search (updates on every keystroke) ──
+        if "live_column_search" not in st.session_state:
+            st.session_state.live_column_search = ""
+
         search = st.text_input(
-            "Find Column", 
+            "Find Column",
+            value=st.session_state.live_column_search,
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
-            key="live_column_search",                    # ← This was the missing piece
+            key="live_column_search_widget",           # unique key
             help="Results update automatically as you type"
         )
+
+        # Sync typed value back to session_state (forces rerun on every keystroke)
+        if search != st.session_state.live_column_search:
+            st.session_state.live_column_search = search
 
         if search:
             escaped_search = re.escape(search)
@@ -3477,7 +3485,6 @@ def render_schema_browser(df: pd.DataFrame):
                             "⚠️ Review data types before use. D2L types are mapped to common SQL equivalents "
                             "but may need adjustment for your specific database."
                         )
-
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
     """renders the sql builder interface with python/pandas support."""
