@@ -1700,65 +1700,53 @@ def generate_sql_for_path(path: List[str],
                           df: pd.DataFrame,
                           dialect: str = "T-SQL") -> str:
     """
-    Generate a LEFT JOIN query that follows a specific dataset path
-    (e.g., ['Users', 'Course Access', 'Grade Results']).
-
-    Uses the same join graph as generate_sql, but respects the exact
-    dataset order of the provided path.
+    Generate a LEFT JOIN query that follows a specific dataset path.
+    Now uses the shared resolver for consistency.
     """
-    # remove duplicates while preserving order
-    path = list(dict.fromkeys(path))
+    path = list(dict.fromkeys(path))  # preserve order, remove duplicates
 
     if len(path) < 2:
         return "-- need at least 2 tables in the path to generate a JOIN."
 
-    # configuration based on dialect
+    # Dialect configuration
     if dialect == "T-SQL":
         q_start, q_end = "[", "]"
-        limit_syntax = "TOP 100"   # Goes after SELECT
-        limit_suffix = ""          # Goes at end
-    else:  # Snowflake and PostgreSQL
+        limit_syntax = "TOP 100"
+        limit_suffix = ""
+    else:
         q_start, q_end = '"', '"'
-        limit_syntax = ""          # Goes after SELECT
-        limit_suffix = "LIMIT 100" # Goes at end
+        limit_syntax = ""
+        limit_suffix = "LIMIT 100"
 
     def quote(name: str) -> str:
         return f"{q_start}{name}{q_end}"
 
-    # Build connection graph from global joins
-    G_full = nx.Graph()
-    joins = get_joins(df)
-    if not joins.empty:
-        for _, r in joins.iterrows():
-            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+    # Use the shared resolver
+    join_steps = resolve_joins_for_selection(path, df)
 
     base_table = path[0]
     aliases = {ds: f"t{i+1}" for i, ds in enumerate(path)}
 
-    # SELECT clause
-    select_part = f"SELECT {limit_syntax}" if limit_syntax else "SELECT"
-    sql_lines = [select_part, f"    {aliases[base_table]}.*"]
+    sql_lines = [
+        f"SELECT {limit_syntax}" if limit_syntax else "SELECT",
+        f"    {aliases[base_table]}.*",
+        f"FROM {quote(base_table)} {aliases[base_table]}"
+    ]
 
-    # FROM clause
-    sql_lines.append(f"FROM {quote(base_table)} {aliases[base_table]}")
+    for step in join_steps:
+        left = step['left']
+        right = step['right']
+        conditions = step['conditions']
 
-    # Walk the path sequentially
-    for i in range(1, len(path)):
-        current_table = path[i]
-        prev_table = path[i - 1]
-
-        if G_full.has_edge(current_table, prev_table):
-            key = G_full[current_table][prev_table]['key']
-            join_line = (
-                f"LEFT JOIN {quote(current_table)} {aliases[current_table]} "
-                f"ON {aliases[prev_table]}.{quote(key)} = {aliases[current_table]}.{quote(key)}"
-            )
-            sql_lines.append(join_line)
-        else:
-            # Fallback if metadata has no edge recorded between these two
+        if conditions:
+            on_clause = " AND ".join(conditions)
             sql_lines.append(
-                f"CROSS JOIN {quote(current_table)} {aliases[current_table]} "
-                f"-- ⚠️ no direct relationship found between {prev_table} and {current_table}"
+                f"LEFT JOIN {quote(right)} {aliases[right]} ON {on_clause}"
+            )
+        else:
+            sql_lines.append(
+                f"CROSS JOIN {quote(right)} {aliases[right]} "
+                f"-- ⚠️ no direct relationship found"
             )
 
     if limit_suffix:
