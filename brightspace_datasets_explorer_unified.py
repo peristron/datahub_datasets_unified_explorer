@@ -861,11 +861,17 @@ def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_joins(df: pd.DataFrame) -> pd.DataFrame:
-    """wrapper to call cached join calculation with hash for cache key."""
+    """Wrapper that creates a strong, content-aware cache key."""
     if df.empty:
         return pd.DataFrame()
-    # create a simple hash for cache invalidation
-    df_hash = f"{len(df)}_{df['dataset_name'].nunique()}"
+
+    # stronger hash based on the actual data that affects joins
+    key_data = df[['dataset_name', 'column_name', 'is_primary_key', 'is_foreign_key']].copy()
+    key_data['is_primary_key'] = key_data['is_primary_key'].astype(str)
+    key_data['is_foreign_key'] = key_data['is_foreign_key'].astype(str)
+
+    df_hash = hashlib.md5(key_data.to_string().encode()).hexdigest()
+
     return get_possible_joins(df_hash, df)
 
 
