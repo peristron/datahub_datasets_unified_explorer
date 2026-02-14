@@ -2333,7 +2333,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "https://csvsplittertool.streamlit.app/",
                     help="Split large CSVs into smaller chunks."
                 )
-                )
+                
 
     # How to use section
     with st.expander("ℹ️ How to use this application", expanded=False):
