@@ -1849,6 +1849,106 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
 
     return "\n".join(lines)
 
+# =============================================================================
+# NEW: Shared Join Resolver (single source of truth)
+# =============================================================================
+
+def resolve_joins_for_selection(
+    selected_datasets: List[str], 
+    df: pd.DataFrame
+) -> List[Dict]:
+    """
+    Returns an ordered list of join steps for the selected datasets.
+    Each step = {'left': str, 'right': str, 'conditions': List[str]}
+    This eliminates duplication across generate_sql, generate_pandas, etc.
+    """
+    if len(selected_datasets) < 2:
+        return []
+
+    selected_datasets = list(dict.fromkeys(selected_datasets))  # preserve order
+
+    # Build full graph
+    G_full = nx.Graph()
+    joins = get_joins(df)
+    if not joins.empty:
+        for _, r in joins.iterrows():
+            src, tgt, key = r['dataset_name_fk'], r['dataset_name_pk'], r['column_name']
+            if G_full.has_edge(src, tgt):
+                if key not in G_full[src][tgt].get('keys', []):
+                    G_full[src][tgt]['keys'].append(key)
+            else:
+                G_full.add_edge(src, tgt, keys=[key])
+
+    # Universal keys + alias mapping (centralized)
+    UNIVERSAL_KEYS = ['UserId', 'OrgUnitId', 'SectionId', 'SemesterId', 'DepartmentId', 'SessionId']
+    ALIAS_MAP = {
+        'SubmitterId': 'UserId', 'GradedByUserId': 'UserId', 'AssignedToUserId': 'UserId',
+        'EvaluatorId': 'UserId', 'AuditorId': 'UserId', 'LastModifiedBy': 'UserId',
+        'CourseOfferingId': 'OrgUnitId', 'SectionId': 'OrgUnitId', 'ParentOrgUnitId': 'OrgUnitId'
+    }
+
+    steps = []
+    joined_tables = {selected_datasets[0]}
+
+    for current_table in selected_datasets[1:]:
+        found = False
+
+        curr_cols_raw = set(df[df['dataset_name'] == current_table]['column_name'])
+        curr_cols_resolved = set(curr_cols_raw)
+        col_lookup_curr = {c: c for c in curr_cols_raw}
+        for c in curr_cols_raw:
+            if c in ALIAS_MAP:
+                canonical = ALIAS_MAP[c]
+                curr_cols_resolved.add(canonical)
+                if canonical not in col_lookup_curr:
+                    col_lookup_curr[canonical] = c
+
+        for existing_table in joined_tables:
+            exist_cols_raw = set(df[df['dataset_name'] == existing_table]['column_name'])
+            exist_cols_resolved = set(exist_cols_raw)
+            col_lookup_exist = {c: c for c in exist_cols_raw}
+            for c in exist_cols_raw:
+                if c in ALIAS_MAP:
+                    canonical = ALIAS_MAP[c]
+                    exist_cols_resolved.add(canonical)
+                    if canonical not in col_lookup_exist:
+                        col_lookup_exist[canonical] = c
+
+            # Graph keys
+            graph_keys = G_full.get_edge_data(existing_table, current_table, default={}).get('keys', [])
+
+            # Shared universal keys
+            shared_universal = [k for k in UNIVERSAL_KEYS 
+                               if k in curr_cols_resolved and k in exist_cols_resolved]
+
+            final_keys = sorted(list(set(graph_keys + shared_universal)))
+
+            if final_keys:
+                conditions = []
+                for k in final_keys:
+                    left_col = col_lookup_exist.get(k, k)
+                    right_col = col_lookup_curr.get(k, k)
+                    conditions.append(f"{existing_table}.{left_col} = {current_table}.{right_col}")
+
+                steps.append({
+                    'left': existing_table,
+                    'right': current_table,
+                    'conditions': conditions
+                })
+                joined_tables.add(current_table)
+                found = True
+                break
+
+        if not found:
+            steps.append({
+                'left': selected_datasets[0],
+                'right': current_table,
+                'conditions': []  # cross join
+            })
+            joined_tables.add(current_table)
+
+    return steps
+
 #------------------------------
 #------------------------------
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
