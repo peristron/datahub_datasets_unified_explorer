@@ -2007,40 +2007,28 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     return "\n".join(sql_lines)
                      
 #------------------------------
+
 def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     """
-    generates python pandas code to load and merge the selected datasets.
-    Supports Composite Keys, Sibling Joins, and Alias Resolution.
+    Generates Python/Pandas code using the shared join resolver.
+    Much cleaner and consistent with generate_sql().
     """
-    # remove duplicates while preserving order
-    selected_datasets = list(dict.fromkeys(selected_datasets))
-
     if len(selected_datasets) < 2:
         return "# please select at least 2 datasets to generate code."
 
-    # helper to clean names for python variables
-    def clean_var(name):
+    # Clean variable names
+    def clean_var(name: str) -> str:
         clean = name.lower()
         clean = re.sub(r'[^a-z0-9_]', '_', clean)
         clean = re.sub(r'_+', '_', clean)
         clean = clean.strip('_')
         return f"df_{clean}"
 
-    # build connection graph
-    G_full = nx.Graph()
-    joins = get_joins(df)
-    if not joins.empty:
-        for _, r in joins.iterrows():
-            src, tgt, key = r['dataset_name_fk'], r['dataset_name_pk'], r['column_name']
-            if G_full.has_edge(src, tgt):
-                if key not in G_full[src][tgt]['keys']:
-                    G_full[src][tgt]['keys'].append(key)
-            else:
-                G_full.add_edge(src, tgt, keys=[key])
+    # Use the shared resolver
+    join_steps = resolve_joins_for_selection(selected_datasets, df)
 
     lines = ["import pandas as pd", "", "# 1. Load Dataframes"]
 
-    # load steps
     for ds in selected_datasets:
         var = clean_var(ds)
         lines.append(f"{var} = pd.read_csv('{ds}.csv')")
@@ -2054,87 +2042,24 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
     lines.append(f"# Starting with {base_ds}")
     lines.append(f"final_df = {base_var}")
 
-    joined_tables = {base_ds}
-    remaining_tables = selected_datasets[1:]
-    
-    # Sibling Logic Configuration (Must match SQL Builder)
-    UNIVERSAL_KEYS = ['UserId', 'OrgUnitId', 'SectionId', 'SemesterId', 'DepartmentId', 'SessionId']
-    ALIAS_MAP = {
-        'SubmitterId': 'UserId', 'GradedByUserId': 'UserId', 'AssignedToUserId': 'UserId',
-        'EvaluatorId': 'UserId', 'AuditorId': 'UserId', 'LastModifiedBy': 'UserId',
-        'CourseOfferingId': 'OrgUnitId', 'SectionId': 'OrgUnitId', 'ParentOrgUnitId': 'OrgUnitId'
-    }
+    for step in join_steps:
+        left = step['left']
+        right = step['right']
+        conditions = step['conditions']
 
-    for current_ds in remaining_tables:
-        current_var = clean_var(current_ds)
-        found_connection = False
-        
-        # Get raw and resolved columns for current dataset
-        curr_cols_raw = set(df[df['dataset_name'] == current_ds]['column_name'])
-        curr_cols_resolved = set()
-        col_lookup_curr = {} 
-        for c in curr_cols_raw:
-            curr_cols_resolved.add(c)
-            col_lookup_curr[c] = c
-            if c in ALIAS_MAP:
-                canonical = ALIAS_MAP[c]
-                curr_cols_resolved.add(canonical)
-                if canonical not in col_lookup_curr: col_lookup_curr[canonical] = c
+        left_var = clean_var(left)
+        right_var = clean_var(right)
 
-        best_merge_code = []
+        lines.append("")
+        lines.append(f"# Joining {right} to {left}")
 
-        for existing_ds in joined_tables:
-            # Resolve existing table cols
-            exist_cols_raw = set(df[df['dataset_name'] == existing_ds]['column_name'])
-            exist_cols_resolved = set()
-            col_lookup_exist = {}
-            for c in exist_cols_raw:
-                exist_cols_resolved.add(c)
-                col_lookup_exist[c] = c
-                if c in ALIAS_MAP:
-                    canonical = ALIAS_MAP[c]
-                    exist_cols_resolved.add(canonical)
-                    if canonical not in col_lookup_exist: col_lookup_exist[canonical] = c
-
-            # 1. Graph Keys
-            graph_keys = []
-            if G_full.has_edge(current_ds, existing_ds):
-                graph_keys = G_full[current_ds][existing_ds]['keys']
-
-            # 2. Shared Universal Keys
-            shared_universal = [k for k in UNIVERSAL_KEYS if k in curr_cols_resolved and k in exist_cols_resolved]
-
-            # 3. Merge
-            final_keys = sorted(list(set(graph_keys + shared_universal)))
-
-            if final_keys:
-                left_on = []
-                right_on = []
-                
-                for k in final_keys:
-                    left_on.append(col_lookup_exist.get(k, k))
-                    right_on.append(col_lookup_curr.get(k, k))
-
-                lines.append("")
-                lines.append(f"# Joining {current_ds} to {existing_ds}")
-                lines.append(f"# Keys: {', '.join(final_keys)}")
-                lines.append("final_df = pd.merge(")
-                lines.append("    final_df,")
-                lines.append(f"    {current_var},")
-                lines.append(f"    left_on={left_on},")
-                lines.append(f"    right_on={right_on},")
-                lines.append("    how='left'")
-                lines.append(")")
-                
-                found_connection = True
-                break
-
-        if not found_connection:
-            lines.append("")
-            lines.append(f"# ⚠️ No direct key found for {current_ds}. Performing cross join (careful!)")
-            lines.append(f"final_df = final_df.merge({current_var}, how='cross')")
-            
-        joined_tables.add(current_ds)
+        if conditions:
+            # Use the first condition for the merge key (pandas merge supports one key or list)
+            # For simplicity we take the first condition's right side as the key
+            key = conditions[0].split('=')[1].strip().split('.')[-1]
+            lines.append(f"final_df = pd.merge(final_df, {right_var}, on='{key}', how='left')")
+        else:
+            lines.append(f"final_df = final_df.merge({right_var}, how='cross')  # no direct key found")
 
     lines.append("")
     lines.append("# 3. Preview Result")
