@@ -1758,38 +1758,25 @@ def generate_sql_for_path(path: List[str],
 #------------------------------
 def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     """
-    Generate pandas code to follow a specific dataset path
-    (e.g., ['Users', 'Course Access', 'Grade Results']).
-
-    Uses the same join graph as generate_pandas, but respects the
-    exact dataset order of the provided path.
+    Generate pandas code for a specific path using the shared resolver.
     """
-    # remove duplicates while preserving order
     path = list(dict.fromkeys(path))
 
     if len(path) < 2:
         return "# need at least 2 tables in the path to generate a JOIN."
 
-#------------------------------
-    # helper to clean names for python variables (User Logins -> df_user_logins)
     def clean_var(name: str) -> str:
-        # remove or replace characters that are invalid in Python identifiers
         clean = name.lower()
-        clean = re.sub(r'[^a-z0-9_]', '_', clean)  # replace non-alphanumeric with underscore
-        clean = re.sub(r'_+', '_', clean)  # collapse multiple underscores
-        clean = clean.strip('_')  # remove leading/trailing underscores
+        clean = re.sub(r'[^a-z0-9_]', '_', clean)
+        clean = re.sub(r'_+', '_', clean)
+        clean = clean.strip('_')
         return f"df_{clean}"
 
-    # Build connection graph from global joins
-    G_full = nx.Graph()
-    joins = get_joins(df)
-    if not joins.empty:
-        for _, r in joins.iterrows():
-            G_full.add_edge(r['dataset_name_fk'], r['dataset_name_pk'], key=r['column_name'])
+    # Use the shared resolver
+    join_steps = resolve_joins_for_selection(path, df)
 
-    lines: List[str] = ["import pandas as pd", "", "# 1. Load Dataframes"]
+    lines = ["import pandas as pd", "", "# 1. Load Dataframes"]
 
-    # Load steps for each table in the path
     for ds in path:
         var = clean_var(ds)
         lines.append(f"{var} = pd.read_csv('{ds}.csv')")
@@ -1797,39 +1784,25 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     lines.append("")
     lines.append("# 2. Perform Merges")
 
-    base_ds = path[0]
-    base_var = clean_var(base_ds)
-
-    lines.append(f"# Starting with {base_ds}")
+    base_var = clean_var(path[0])
     lines.append(f"final_df = {base_var}")
 
-    # Walk the path sequentially, joining each table to its immediate predecessor
-    for i in range(1, len(path)):
-        current_ds = path[i]
-        prev_ds = path[i - 1]
-        current_var = clean_var(current_ds)
+    for step in join_steps:
+        left = step['left']
+        right = step['right']
+        conditions = step['conditions']
 
-        if G_full.has_edge(current_ds, prev_ds):
-            key = G_full[current_ds][prev_ds]['key']
+        right_var = clean_var(right)
 
-            lines.append("")
-            lines.append(f"# Joining {current_ds} to {prev_ds} on {key}")
-            lines.append("final_df = pd.merge(")
-            lines.append("    final_df,")
-            lines.append(f"    {current_var},")
-            lines.append(f"    on='{key}',")
-            lines.append("    how='left'")
-            lines.append(")")
+        lines.append("")
+        lines.append(f"# Joining {right} to {left}")
+
+        if conditions:
+            # Take first condition's key for simplicity (pandas merge)
+            key = conditions[0].split('=')[1].strip().split('.')[-1]
+            lines.append(f"final_df = pd.merge(final_df, {right_var}, on='{key}', how='left')")
         else:
-            lines.append("")
-            lines.append(
-                f"# ⚠️ No direct key found between {prev_ds} and {current_ds} in metadata. "
-                f"Performing cross join (use with caution)."
-            )
-            lines.append("final_df = final_df.merge(")
-            lines.append(f"    {current_var},")
-            lines.append("    how='cross'")
-            lines.append(")")
+            lines.append(f"final_df = final_df.merge({right_var}, how='cross')  # no direct key")
 
     lines.append("")
     lines.append("# 3. Preview Result")
@@ -1838,7 +1811,7 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 # =============================================================================
-# NEW: Shared Join Resolver (single source of truth)
+# shared Join Resolver (single source of truth)
 # =============================================================================
 
 def resolve_joins_for_selection(
