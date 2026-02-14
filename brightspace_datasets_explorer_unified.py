@@ -2254,7 +2254,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
-            # Prominent Clear Selection Button
+            # more prominent "Clear All Selections" button — always visible for better UX
             if selected_datasets:
                 st.button(
                     "🗑️ Clear All Selections",
@@ -2264,7 +2264,13 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     help="Reset all selected datasets and start fresh"
                 )
             else:
-                st.caption("Select datasets above to begin")
+                st.button(
+                    "🗑️ Clear All Selections",
+                    type="secondary",
+                    use_container_width=True,
+                    disabled=True,
+                    help="No selections to clear"
+                )
 
         # authentication
         st.divider()
