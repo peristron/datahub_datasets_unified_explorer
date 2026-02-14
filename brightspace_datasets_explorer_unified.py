@@ -2254,8 +2254,17 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
+            # Dataset selection area
             if selected_datasets:
-                st.button("🗑️ Clear Selection", on_click=clear_all_selections)
+                st.button(
+                    "🗑️ Clear All Selections", 
+                    type="primary",           # makes it red / more noticeable
+                    use_container_width=True,
+                    on_click=clear_all_selections,
+                    help="Clear current selection and start fresh"
+                )
+            else:
+                st.caption("Select datasets from the sidebar to begin building queries")
 
         # authentication
         st.divider()
