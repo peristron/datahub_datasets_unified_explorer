@@ -2254,8 +2254,17 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
+            # Prominent Clear Selection Button
             if selected_datasets:
-                st.button("🗑️ Clear Selection", on_click=clear_all_selections)
+                st.button(
+                    "🗑️ Clear All Selections",
+                    type="primary",
+                    use_container_width=True,
+                    on_click=clear_all_selections,
+                    help="Reset all selected datasets and start fresh"
+                )
+            else:
+                st.caption("Select datasets above to begin")
 
         # authentication
         st.divider()
@@ -2323,6 +2332,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "✂️ CSV Splitter",
                     "https://csvsplittertool.streamlit.app/",
                     help="Split large CSVs into smaller chunks."
+                )
                 )
 
     # How to use section
