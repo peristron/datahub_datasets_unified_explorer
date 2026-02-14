@@ -713,18 +713,18 @@ def load_data() -> pd.DataFrame:
     return pd.DataFrame()
 
 
-#------------------------------
-@st.cache_data
+import hashlib
+
+@st.cache_data(ttl=300)  # 5-minute cache — good balance
 def get_possible_joins(df_hash: str, df: pd.DataFrame) -> pd.DataFrame:
     """
     Calculates join conditions.
-    1. Uses implicit defaults to ensure Hubs (Users, OrgUnits) are valid Targets.
-    2. Allows columns to be Sources if they are marked as FKs, even if they are also PKs.
-    3. Handles Synonym/Alias matching.
+    Nuses a much stronger, content-aware cache key
     """
-#------------------------------
     if df.empty:
         return pd.DataFrame()
+
+
 
     # Filter to extracts only — Advanced Data Sets (reports) are pre-joined
     # and should not participate in the relationship graph.
