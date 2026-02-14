@@ -2254,31 +2254,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
-            # Dataset Selection Area
-            st.subheader("Dataset Selection")
-
-            if is_advanced:
-                select_mode = st.radio(
-                    "Method:", ["Templates", "By Category", "List All"],
-                    horizontal=True,
-                    label_visibility="collapsed"
-                )
-            else:
-                select_mode = "Templates"
-
-            # ... (your existing template / category / list logic stays the same) ...
-
-            # ── Prominent Clear Selection Button ──
             if selected_datasets:
-                st.button(
-                    "🗑️ Clear All Selections",
-                    type="primary",                    # red / prominent
-                    use_container_width=True,
-                    on_click=clear_all_selections,
-                    help="Reset all selected datasets and start fresh"
-                )
-            else:
-                st.caption("Select datasets above to begin")
+                st.button("🗑️ Clear Selection", on_click=clear_all_selections)
 
         # authentication
         st.divider()
