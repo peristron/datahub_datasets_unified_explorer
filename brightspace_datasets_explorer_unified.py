@@ -3196,7 +3196,7 @@ def render_schema_browser(df: pd.DataFrame):
             else:
                 st.warning("No matches found.")
         else:
-            st.caption("Type a column name or keyword and press **Enter** to search")
+            st.caption("Type a a ehole or partial column name or keyword and press **Enter** to search")
 
     with col_browse:
         st.subheader("📂 Browse by Dataset")
