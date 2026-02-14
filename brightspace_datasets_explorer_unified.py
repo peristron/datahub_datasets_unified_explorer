@@ -3165,19 +3165,19 @@ def render_schema_browser(df: pd.DataFrame):
     with col_search:
         st.subheader("🔍 Column Search")
         
-        # ── Fully controlled live predictive search ──
+        # ── Fully controlled live predictive search (this pattern works) ──
         if "schema_column_search" not in st.session_state:
             st.session_state.schema_column_search = ""
 
         search = st.text_input(
             "Find Column",
-            value=st.session_state.schema_column_search,        # ← controlled value
+            value=st.session_state.schema_column_search,          # ← controlled value
             placeholder="e.g. OrgUnitId, UserId, LastAccessed...",
-            key="schema_column_search_input",                   # unique key
+            key="schema_column_search_input",                     # unique key
             help="Results update automatically as you type"
         )
 
-        # Force rerun on every keystroke (this is what makes it live)
+        # This forces a rerun on every keystroke
         if search != st.session_state.schema_column_search:
             st.session_state.schema_column_search = search
             st.rerun()
