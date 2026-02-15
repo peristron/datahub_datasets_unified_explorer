@@ -1963,7 +1963,7 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
     Generates a deterministic SQL JOIN query using the shared resolver.
-    Enforces alias usage to handle table names with spaces correctly.
+    Enforces alias usage and selects all columns.
     """
     if len(selected_datasets) < 2:
         return "-- please select at least 2 datasets to generate a join."
@@ -1987,9 +1987,13 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
     base_table = selected_datasets[0]
     aliases = {ds: f"t{i+1}" for i, ds in enumerate(selected_datasets)}
 
+    # Select from all aliased tables to ensure data visibility
+    select_parts = [f"{alias}.*" for alias in aliases.values()]
+    select_clause = ", ".join(select_parts)
+
     sql_lines = [
         f"SELECT {limit_syntax}" if limit_syntax else "SELECT",
-        f"    {aliases[base_table]}.*",
+        f"    {select_clause}",
         f"FROM {quote(base_table)} {aliases[base_table]}"
     ]
 
