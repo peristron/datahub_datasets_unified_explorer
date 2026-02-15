@@ -4038,7 +4038,7 @@ def render_kpi_recipes(df: pd.DataFrame):
     st.markdown("Pre-packaged SQL queries for common educational analysis questions.")
 
     st.info(
-        "These are ready-to-use SQL templates for common reporting questions. "
+        "These are some common use-case/ready-to-use SQL templates for some of the more common reporting questions. "
         "Each recipe targets specific datasets — look for ✅/❌ indicators to confirm "
         "availability in your schema.\n\n"
         "**How to use:** Select a category below, choose your SQL dialect, then copy or download the query. "
