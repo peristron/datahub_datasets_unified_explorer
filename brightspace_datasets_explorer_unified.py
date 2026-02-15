@@ -3415,7 +3415,16 @@ def render_schema_browser(df: pd.DataFrame):
                             st.markdown(f"🔗 **Foreign Keys:** {', '.join(fks)}")
 
                 # DDL Export
-                with st.expander("🏗️ Export as DDL (CREATE TABLE)", expanded=False):
+                with st.expander(
+                    "🏗️ Export as DDL (CREATE TABLE)", 
+                    expanded=False,
+                    help="Generate the SQL code needed to create this table structure in your own database."
+                ):
+                    st.caption(
+                        "Use this code to create an empty table in your Data Warehouse (SQL Server, Snowflake, etc.) "
+                        "so you can import the CSV data."
+                    )
+                    
                     ddl_dialect = st.radio(
                         "Dialect:",
                         ["T-SQL", "Snowflake", "PostgreSQL"],
@@ -3434,6 +3443,11 @@ def render_schema_browser(df: pd.DataFrame):
                             file_name=f"{selected_ds.replace(' ', '_').lower()}_ddl_{ddl_dialect.lower()}.sql",
                             mime="application/sql",
                             key=f"ddl_download_{selected_ds}"
+                        )
+                    with col_ddl_info:
+                        st.caption(
+                            "⚠️ Review data types before use. D2L types are mapped to common SQL equivalents "
+                            "but may need adjustment for your specific database."
                         )
                     with col_ddl_info:
                         st.caption(
