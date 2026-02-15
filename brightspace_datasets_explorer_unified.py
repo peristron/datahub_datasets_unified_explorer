@@ -2195,6 +2195,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             
             if st.button("✏️ Edit URLs (Full View)", use_container_width=True):
                 st.session_state['show_url_editor'] = True
+                # FIX: Explicitly close other modal views to prevent conflicts
+                st.session_state['show_health_check'] = False
                 st.rerun()
 
             if st.button("🔄 Scrape & Update", type="primary", use_container_width=True):
@@ -2225,6 +2227,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
             if st.button("🩺 Health Check", use_container_width=True):
                 st.session_state['show_health_check'] = True
+                # FIX: Explicitly close other modal views to prevent conflicts
+                st.session_state['show_url_editor'] = False
                 st.rerun()
 
         # dataset selection (when applicable)
