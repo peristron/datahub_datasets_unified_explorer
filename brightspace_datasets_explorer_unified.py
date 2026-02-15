@@ -4039,7 +4039,7 @@ def render_kpi_recipes(df: pd.DataFrame):
 
     st.info(
         "**Note:** These are **static templates**. Table names (e.g., `OrganizationalUnits`) may need manual adjustment "
-        "(e.g., adding brackets `[]` or quotes `\"\"`) to match your specific database schema.\n\n"
+        "(e.g., adding brackets `[]` or quotes `\"\"`) to match a specific database schema.\n\n"
         "💡 **Pro Tip:** For robust, schema-aware code generation that automatically handles table names, aliases, and joins "
         "specific to your data, use the **⚡ SQL Builder** in the sidebar instead.",
         icon="ℹ️"
