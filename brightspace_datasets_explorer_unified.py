@@ -306,7 +306,8 @@ ORDER BY FailureRate DESC
         {
             "title": "Get Latest Row Version",
             "description": "Many datasets (like Activity Feed) track edits using a 'Version' column. Use this pattern to filter for only the most recent version of each record.",
-            "datasets": ["Activity Feed Post Objects", "Content Objects", "Wiki Pages"],
+            # Removed 'Wiki Pages' to avoid confusion with legacy tools
+            "datasets": ["Activity Feed Post Objects", "Content Objects"],
             "difficulty": "Advanced",
             "sql_template": """
 WITH RankedRecords AS (
