@@ -4038,12 +4038,11 @@ def render_kpi_recipes(df: pd.DataFrame):
     st.markdown("Pre-packaged SQL queries for common educational analysis questions.")
 
     st.info(
-        "These are some common use-case/ready-to-use SQL templates for some of the more common reporting questions. "
-        "Each recipe targets specific datasets — look for ✅/❌ indicators to confirm "
-        "availability in your schema.\n\n"
-        "**How to use:** Select a category below, choose your SQL dialect, then copy or download the query. "
-        "Adapt the `WHERE` clauses and column selections to match your institution's needs.",
-        icon="💡"
+        "**Note:** These are **static templates**. Table names (e.g., `OrganizationalUnits`) may need manual adjustment "
+        "(e.g., adding brackets `[]` or quotes `\"\"`) to match your specific database schema.\n\n"
+        "💡 **Pro Tip:** For robust, schema-aware code generation that automatically handles table names, aliases, and joins "
+        "specific to your data, use the **⚡ SQL Builder** in the sidebar instead.",
+        icon="ℹ️"
     )
 
     all_cats = list(RECIPE_REGISTRY.keys())
@@ -4099,7 +4098,6 @@ def render_kpi_recipes(df: pd.DataFrame):
                         st.caption(f"⚠️ Converted from T-SQL to {dialect}. Verify syntax before use.")
 
             st.divider()
-
 #------------------------------
 def render_schema_diff(df: pd.DataFrame):
     """renders the schema diff tool to compare current schema against a backup."""
