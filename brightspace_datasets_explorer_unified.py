@@ -463,11 +463,13 @@ def clean_description(text: str) -> str:
 
 
 
-def scrape_table(url: str, category_name: str) -> List[Dict]:
+def scrape_table(url: str, category_name: str, session: requests.Session) -> List[Dict]:
     """
     parses a d2l knowledge base page to extract dataset definitions AND context descriptions.
     returns a list of dictionaries representing columns.
+    uses a persistent session for connection pooling.
     """
+    # Define headers (can also be set on the session object, but setting here ensures specific User-Agent)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
     #------------
@@ -493,7 +495,8 @@ def scrape_table(url: str, category_name: str) -> List[Dict]:
     ]
 
     try:
-        response = requests.get(url, headers=headers, timeout=15, verify=False)
+        # Use session.get instead of requests.get to reuse TCP connections
+        response = session.get(url, headers=headers, timeout=15, verify=False)
         if response.status_code != 200:
             logger.warning(f"Status {response.status_code} for {url}")
             return []
