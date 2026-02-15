@@ -3446,11 +3446,7 @@ def render_schema_browser(df: pd.DataFrame):
                             "⚠️ Review data types before use. D2L types are mapped to common SQL equivalents "
                             "but may need adjustment for your specific database."
                         )
-                    with col_ddl_info:
-                        st.caption(
-                            "⚠️ Review data types before use. D2L types are mapped to common SQL equivalents "
-                            "but may need adjustment for your specific database."
-                        )
+
 
 
 def render_sql_builder(df: pd.DataFrame, selected_datasets: List[str]):
