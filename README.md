@@ -5,7 +5,7 @@ A Unified Schema Intelligence Engine for D2L/Brightspace Data Hub.
     Deployed: [Streamlit Cloud Link]
     Status: Production Ready (v2.1)
 
-This application is a "Rosetta Stone" for Data Engineers, Analysts, and Architects working with Brightspace Data Sets (BDS). It bridges the gap between the raw Knowledge Base documentation and actionable SQL/Python code, providing a visual and interactive way to explore the complex Entity-Relationship model of the LMS.
+This application attempts to be a sort of... "Rosetta Stone" for Data Engineers, Analysts, and Architects working with Brightspace Data Sets (BDS). It bridges the gap between the raw Knowledge Base documentation and actionable SQL/Python code, providing a visual and interactive way to explore the complex Entity-Relationship model of the LMS.
 ## 🚀 Key Features
 
 ### 1. 🎛️ Experience Modes
