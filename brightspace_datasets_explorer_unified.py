@@ -2343,7 +2343,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
             )
 
             if st.button("📋 Dataset ID Reference", use_container_width=True):
-                render_dataset_id_reference()
+                render_dataset_id_reference(df)
 
             c_t1, c_t2 = st.columns(2)
             with c_t1:
@@ -2358,7 +2358,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "https://csvsplittertool.streamlit.app/",
                     help="Split large CSVs into smaller chunks."
                 )
-                
 
     # How to use section
     with st.expander("ℹ️ How to use this application", expanded=False):
