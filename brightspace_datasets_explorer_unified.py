@@ -4612,6 +4612,12 @@ def render_health_check(df: pd.DataFrame):
         results = []
         progress = st.progress(0, "Starting validation...")
 
+        # FIX: Create a session for connection pooling
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        session.mount('https://', adapter)
+        session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+
         for i, url in enumerate(sampled_urls):
             progress.progress(
                 (i + 1) / len(sampled_urls),
@@ -4627,7 +4633,8 @@ def render_health_check(df: pd.DataFrame):
                 category = clean_name.replace('-data-sets', '').replace('-', ' ').strip().lower()
 
             try:
-                live_data = scrape_table(url, category)
+                # FIX: Pass the session object to scrape_table
+                live_data = scrape_table(url, category, session)
                 if not live_data:
                     results.append({
                         'url': url,
@@ -4705,7 +4712,6 @@ def render_health_check(df: pd.DataFrame):
                     'removed_ds': set(),
                     'col_diffs': []
                 })
-
         progress.empty()
 
         # Summary metrics
