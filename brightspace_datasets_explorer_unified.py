@@ -1730,6 +1730,7 @@ def generate_sql_for_path(path: List[str],
     """
     Generate a LEFT JOIN query that follows a specific dataset path.
     Uses the shared resolver and enforces alias usage in ON clauses.
+    Selects columns from all tables in the chain.
     """
     path = list(dict.fromkeys(path))  # preserve order, remove duplicates
 
@@ -1755,9 +1756,13 @@ def generate_sql_for_path(path: List[str],
     base_table = path[0]
     aliases = {ds: f"t{i+1}" for i, ds in enumerate(path)}
 
+    # Select from all aliased tables to ensure data visibility
+    select_parts = [f"{alias}.*" for alias in aliases.values()]
+    select_clause = ", ".join(select_parts)
+
     sql_lines = [
         f"SELECT {limit_syntax}" if limit_syntax else "SELECT",
-        f"    {aliases[base_table]}.*",
+        f"    {select_clause}",
         f"FROM {quote(base_table)} {aliases[base_table]}"
     ]
 
@@ -1788,6 +1793,12 @@ def generate_sql_for_path(path: List[str],
 
     if limit_suffix:
         sql_lines.append(limit_suffix)
+
+    # Add safety warning about fan-out if joining heavily
+    if len(path) > 2:
+        sql_lines.append("")
+        sql_lines.append("-- NOTE: This query joins multiple tables. Ensure you aren't creating")
+        sql_lines.append("-- a Cartesian product (fan-out) if the join keys are not unique.")
 
     return "\n".join(sql_lines)
 
