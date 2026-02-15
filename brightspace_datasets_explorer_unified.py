@@ -1948,12 +1948,11 @@ def resolve_joins_for_selection(
     return steps
 
 #------------------------------
-#------------------------------
 def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
                  dialect: str = "T-SQL") -> str:
     """
     Generates a deterministic SQL JOIN query using the shared resolver.
-    Much cleaner and eliminates duplication.
+    Enforces alias usage to handle table names with spaces correctly.
     """
     if len(selected_datasets) < 2:
         return "-- please select at least 2 datasets to generate a join."
@@ -1989,7 +1988,15 @@ def generate_sql(selected_datasets: List[str], df: pd.DataFrame,
         conditions = step['conditions']
 
         if conditions:
-            on_clause = " AND ".join(conditions)
+            # FIX: Replace raw table names in conditions with their aliases.
+            # e.g., "Organizational Units.OrgUnitId" -> "t1.OrgUnitId"
+            aliased_conditions = []
+            for cond in conditions:
+                cond = cond.replace(f"{left}.", f"{aliases[left]}.")
+                cond = cond.replace(f"{right}.", f"{aliases[right]}.")
+                aliased_conditions.append(cond)
+
+            on_clause = " AND ".join(aliased_conditions)
             sql_lines.append(
                 f"LEFT JOIN {quote(right)} {aliases[right]} ON {on_clause}"
             )
