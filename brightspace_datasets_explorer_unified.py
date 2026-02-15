@@ -1,4 +1,4 @@
-#   brightspace_datasets_explorer_unified02152026.py, LKG 02092026
+#   brightspace_datasets_explorer_unified02152026.py, LKG 02152026
 # =============================================================================
 # unified brightspace dataset explorer
 # combines the best of all 3 earlier code-bases with simple/advanced modes
