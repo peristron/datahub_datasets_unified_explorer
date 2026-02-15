@@ -638,8 +638,24 @@ def scrape_and_save(urls: List[str]) -> pd.DataFrame:
         clean_name = re.sub(r'^[\d\s-]+', '', filename)
         return clean_name.replace('-data-sets', '').replace('-', ' ').strip().lower()
 
+    # --- PERFORMANCE: Setup Persistent Session ---
+    # We use a session to enable Connection Pooling (keep-alive).
+    # This avoids full TCP/SSL handshakes for every single URL.
+    session = requests.Session()
+    
+    # Configure retries and pool size
+    # pool_maxsize must match max_workers to prevent thread blocking
+    adapter = requests.adapters.HTTPAdapter(
+        pool_connections=10, 
+        pool_maxsize=10, 
+        max_retries=3
+    )
+    session.mount('https://', adapter)
+    session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+
     with ThreadPoolExecutor(max_workers=10) as executor:
-        args = [(url, extract_category(url)) for url in urls]
+        # Pass the session object to every thread
+        args = [(url, extract_category(url), session) for url in urls]
         future_to_url = {executor.submit(scrape_table, *arg): arg[0] for arg in args}
 
         for i, future in enumerate(future_to_url):
