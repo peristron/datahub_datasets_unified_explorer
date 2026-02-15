@@ -1723,12 +1723,13 @@ def create_relationship_matrix(df: pd.DataFrame, filter_connected_only: bool = T
 
 #------------
 #------------------------------
+
 def generate_sql_for_path(path: List[str],
                           df: pd.DataFrame,
                           dialect: str = "T-SQL") -> str:
     """
     Generate a LEFT JOIN query that follows a specific dataset path.
-    Now uses the shared resolver for consistency.
+    Uses the shared resolver and enforces alias usage in ON clauses.
     """
     path = list(dict.fromkeys(path))  # preserve order, remove duplicates
 
@@ -1766,7 +1767,16 @@ def generate_sql_for_path(path: List[str],
         conditions = step['conditions']
 
         if conditions:
-            on_clause = " AND ".join(conditions)
+            # FIX: Replace raw table names in conditions with their aliases.
+            # The resolver returns "Table Name.Col = Other Table.Col".
+            # We replace "Table Name." with "t1." to handle spaces and ensure consistency.
+            aliased_conditions = []
+            for cond in conditions:
+                cond = cond.replace(f"{left}.", f"{aliases[left]}.")
+                cond = cond.replace(f"{right}.", f"{aliases[right]}.")
+                aliased_conditions.append(cond)
+            
+            on_clause = " AND ".join(aliased_conditions)
             sql_lines.append(
                 f"LEFT JOIN {quote(right)} {aliases[right]} ON {on_clause}"
             )
