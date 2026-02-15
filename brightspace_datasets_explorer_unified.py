@@ -4488,6 +4488,14 @@ def render_health_check(df: pd.DataFrame):
     st.header("🩺 Scrape Health Check")
     st.markdown("Validate the integrity of your scraped data against live D2L documentation.")
 
+    # GUARD: Ensure dataframe has required columns before proceeding
+    if df.empty or 'dataset_name' not in df.columns:
+        st.error("⚠️ No dataset schema loaded. Please run a scrape first.")
+        if st.button("Back"):
+            st.session_state['show_health_check'] = False
+            st.rerun()
+        return
+
     # =============================================
     # TIER 1: Offline Checks (instant, no network)
     # =============================================
