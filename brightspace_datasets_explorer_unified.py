@@ -1856,6 +1856,11 @@ def generate_pandas_for_path(path: List[str], df: pd.DataFrame) -> str:
     lines.append("# 3. Preview Result")
     lines.append("print(final_df.head())")
 
+    if len(selected_datasets) > 2:
+        lines.append("")
+        lines.append("# NOTE: This script merges multiple DataFrames.")
+        lines.append("# Verify row counts to ensure you aren't creating a Cartesian product (fan-out).")
+
     return "\n".join(lines)
 
 # =============================================================================
