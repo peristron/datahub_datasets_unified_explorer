@@ -3415,13 +3415,10 @@ def render_schema_browser(df: pd.DataFrame):
                             st.markdown(f"🔗 **Foreign Keys:** {', '.join(fks)}")
 
                 # DDL Export
-                with st.expander(
-                    "🏗️ Export as DDL (CREATE TABLE)", 
-                    expanded=False,
-                    help="Generate the SQL code needed to create this table structure in your own database."
-                ):
+                with st.expander("🏗️ Export as DDL (CREATE TABLE)", expanded=False):
                     st.caption(
-                        "Use this code to create an empty table in your Data Warehouse (SQL Server, Snowflake, etc.) "
+                        "Generate the SQL code needed to create this table structure in your own database. "
+                        "Use this to create an empty table in your Data Warehouse (SQL Server, Snowflake, etc.) "
                         "so you can import the CSV data."
                     )
                     
