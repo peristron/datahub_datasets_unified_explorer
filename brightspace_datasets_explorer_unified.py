@@ -2163,6 +2163,23 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 label_visibility="collapsed"
             )
 
+        # --- Global Clear Button (High Visibility) ---
+        # Positioned right after navigation for easy access
+        if not df.empty:
+            has_active_state = (
+                len(st.session_state.get('selected_datasets', [])) > 0 or
+                len(st.session_state.get('dataset_multiselect', [])) > 0 or
+                st.session_state.get('path_finder_results') is not None
+            )
+            
+            st.button(
+                "🗑️ Clear All Selections & Results",
+                type="primary" if has_active_state else "secondary",
+                use_container_width=True,
+                on_click=clear_all_selections,
+                help="Reset selected datasets, graph filters, and Path Finder results."
+            )
+
         st.divider()
 
         # data status and scraper - ROBUST VERSION
@@ -2235,8 +2252,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
         # dataset selection (when applicable)
         selected_datasets: List[str] = []
-        
-        # Only show the detailed selector widgets on specific tabs
         if not df.empty and view in ["🗺️ Relationship Map", "⚡ SQL Builder"]:
             st.divider()
             st.subheader("Dataset Selection")
@@ -2322,34 +2337,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 all_ds = sorted(df['dataset_name'].unique())
                 selected_datasets = st.multiselect(
                     "Select Datasets:", all_ds, key="dataset_multiselect"
-                )
-
-        # --- MOVED: Global Clear Button (Now visible on ALL tabs) ---
-        if not df.empty:
-            # Determine if there is any active state to clear (Datasets OR Path Finder results)
-            has_active_state = (
-                len(st.session_state.get('selected_datasets', [])) > 0 or
-                len(st.session_state.get('dataset_multiselect', [])) > 0 or
-                st.session_state.get('path_finder_results') is not None
-            )
-
-            st.divider()
-            
-            if has_active_state:
-                st.button(
-                    "🗑️ Clear All Selections & Results",
-                    type="primary",
-                    use_container_width=True,
-                    on_click=clear_all_selections,
-                    help="Reset all selected datasets and clear Path Finder results"
-                )
-            else:
-                st.button(
-                    "🗑️ Clear All Selections & Results",
-                    type="secondary",
-                    use_container_width=True,
-                    disabled=True,
-                    help="No active selections to clear"
                 )
 
         # authentication
