@@ -581,7 +581,9 @@ def scrape_table(url: str, category_name: str, session: requests.Session) -> Lis
                         'description': 'description',
                         'can_be_null?': 'is_nullable',
                         'version_added': 'version_history',
-                        'version': 'version_history'
+                        'version': 'version_history',
+                        'versionhistory': 'version_history',
+                        'version_history': 'version_history'
                     }
 
                     clean_entry = {header_map.get(k, k): v for k, v in entry.items()}
