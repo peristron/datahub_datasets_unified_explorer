@@ -2470,7 +2470,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
     st.header("📋 Brightspace Dataset ID Reference")
     st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
 
-    # ── UPDATED LIST (Merged with new values) ──
+    # ── UPDATED LIST (Merged with your latest ID discoveries) ──
     hardcoded = [
         {"Dataset Name": "Accommodations Profile Log", "SchemaID": "e1da7ff3-8578-4659-bb34-bb901d3a032c", "Full PluginID": "729711ba-ca1d-11eb-b8bc-0242ac130003", "Differential PluginID": "d0d3c00a-ca1a-11eb-b8bc-0242ac130003"},
         {"Dataset Name": "Activity Exemptions Log", "SchemaID": "6ed33466-03ce-4702-9402-d8089ccaf5cc", "Full PluginID": "ef65e37a-7ae4-4389-9de0-c0d1ab7a9596", "Differential PluginID": "53198ba5-d30f-476b-bbb1-bbf9cdf1ed4c"},
@@ -2620,18 +2620,19 @@ def render_dataset_id_reference(df: pd.DataFrame):
     ref_df = pd.DataFrame(hardcoded)
 
     # ── DUPLICATE PREVENTION LOGIC ──
-    # Create a set of existing names for fast, accurate looking up
-    existing_names = set(ref_df['Dataset Name'])
+    # Create a lookup set for fast checking (case-insensitive for safety)
+    existing_names_lower = {name.lower() for name in ref_df['Dataset Name']}
 
     if not df.empty and 'dataset_name' in df.columns:
         new_list = []
         # Iterate through unique raw names in the scraper dataframe
         for name in df['dataset_name'].unique():
-            # Format the name FIRST (snake_case -> Title Case)
-            nice_name = ' '.join(word.capitalize() for word in name.replace('_', ' ').split())
+            # FIX: Stop re-capitalizing words (which breaks acronyms like 'LTI' -> 'Lti')
+            # Trust the 'smart_title' output from the scraper, just ensure underscores are gone.
+            nice_name = name.replace('_', ' ').strip()
 
-            # Check if the FORMATTED name exists in the hardcoded list
-            if nice_name not in existing_names:
+            # Check if the FORMATTED name exists in the hardcoded list (case-insensitive)
+            if nice_name.lower() not in existing_names_lower:
                 new_list.append({
                     "Dataset Name": nice_name,
                     "SchemaID": "(New – ID not mapped yet)",
@@ -2639,7 +2640,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
                     "Differential PluginID": "(New – ID not mapped yet)"
                 })
                 # Add to set to prevent duplicates if the loop encounters the same name again
-                existing_names.add(nice_name)
+                existing_names_lower.add(nice_name.lower())
 
         if new_list:
             new_df = pd.DataFrame(new_list)
