@@ -2464,12 +2464,13 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — help
     return view, selected_datasets
 
 
+
 def render_dataset_id_reference(df: pd.DataFrame):
     """Hybrid Dataset ID Reference: Hard-coded stable IDs + auto-detect new datasets from scraper."""
     st.header("📋 Brightspace Dataset ID Reference")
     st.caption("SchemaID + Full / Differential PluginIDs (stable across environments)")
 
-    # ── FULLY POPULATED FROM YOUR CODE-BLOCK 1 (Sorted Alphabetically) ──
+    # ── UPDATED LIST (Merged with new values) ──
     hardcoded = [
         {"Dataset Name": "Accommodations Profile Log", "SchemaID": "e1da7ff3-8578-4659-bb34-bb901d3a032c", "Full PluginID": "729711ba-ca1d-11eb-b8bc-0242ac130003", "Differential PluginID": "d0d3c00a-ca1a-11eb-b8bc-0242ac130003"},
         {"Dataset Name": "Activity Exemptions Log", "SchemaID": "6ed33466-03ce-4702-9402-d8089ccaf5cc", "Full PluginID": "ef65e37a-7ae4-4389-9de0-c0d1ab7a9596", "Differential PluginID": "53198ba5-d30f-476b-bbb1-bbf9cdf1ed4c"},
@@ -2511,6 +2512,13 @@ def render_dataset_id_reference(df: pd.DataFrame):
         {"Dataset Name": "Course Copy Logs", "SchemaID": "d3c500d0-c384-48b3-9770-70023a6b2ca7", "Full PluginID": "1bca1fba-4edf-4f88-9f9f-daee9ca3a0c5", "Differential PluginID": "4bb85466-3b1c-4a39-ae27-281d6c57ebc5"},
         {"Dataset Name": "Course Publisher Launches", "SchemaID": "4be23ec6-9cf7-43b5-bf38-a82251d96e5b", "Full PluginID": "08f2847c-c80e-4dd0-9414-a1be8005f5ae", "Differential PluginID": "33761584-26d6-4053-a5f8-0a744a9f2fb9"},
         {"Dataset Name": "Course Publisher Recipients", "SchemaID": "6fd5da94-5270-4359-a6b2-8d0896527c1f", "Full PluginID": "e8b4670e-fda5-4c93-a8db-689e6881230c", "Differential PluginID": "1eaa086d-9073-4857-afc9-12dde5e8a93a"},
+        {"Dataset Name": "CPD Categories", "SchemaID": "61f0b972-63f6-42e4-b7db-5e55795360c0", "Full PluginID": "c8c1b0a7-010c-4d73-ba9f-ff5f9bc21369", "Differential PluginID": "d0c6b4a1-d888-4b8e-99a5-a7fbbdee1fa0"},
+        {"Dataset Name": "CPD Job Targets", "SchemaID": "29acc27c-feac-4def-bdca-2c63e78c795e", "Full PluginID": "888ec8f2-1260-4099-87ba-31a4fff07e9d", "Differential PluginID": "b2b76329-74f6-4540-978f-d1f1831457aa"},
+        {"Dataset Name": "CPD Methods", "SchemaID": "f4908e05-a9f0-413f-9c1b-01f44e04070d", "Full PluginID": "ffafb49a-895f-4d8d-94bf-b5143f639680", "Differential PluginID": "dbc31dff-e848-47b5-9f0b-84253ddfbeda"},
+        {"Dataset Name": "CPD Question Answers", "SchemaID": "5e18aea4-36b6-41a6-89df-75460b8cdcad", "Full PluginID": "e2ac7def-91f6-4c99-9bcb-b05183d4dcb8", "Differential PluginID": "c5896d79-b8d2-4232-b210-d618235a09f4"},
+        {"Dataset Name": "CPD Questions", "SchemaID": "9c0eba24-05e5-4ce5-a3cf-74c4b64b5b03", "Full PluginID": "56588f5b-e686-4cd1-bbc5-22a16a10f7eb", "Differential PluginID": "80b76771-d99b-4261-84da-33c1895a0378"},
+        {"Dataset Name": "CPD User Records", "SchemaID": "8e2eb7df-2dbb-4ca1-b313-b217bd7bf68e", "Full PluginID": "0792f9bc-2b62-4509-8597-0d32e66609e8", "Differential PluginID": "e586e1b7-5b53-4d85-b7d3-d164c6b92776"},
+        {"Dataset Name": "CPD User Targets", "SchemaID": "4851cbfe-4fb4-47f0-b6c9-df4594cddae5", "Full PluginID": "cfe0ee2e-8376-48b8-9f53-8a34cd073255", "Differential PluginID": "64a40051-a995-4db1-805c-300b89130d6e"},
         {"Dataset Name": "Creator+ Practices Adoption", "SchemaID": "45f8a83e-78e0-4444-8d3f-d242e35c7158", "Full PluginID": "ef4e1555-0136-4aae-9003-d9c8ca3e074e", "Differential PluginID": "44af38cf-2e49-4789-b2cc-ad50d1c0c32b"},
         {"Dataset Name": "Creator+ Practices Engagement", "SchemaID": "ebc1b345-76b7-4daa-b07d-f2a892e32c7f", "Full PluginID": "d8894e7f-06e6-4dc8-8810-585bfe61fdd5", "Differential PluginID": "d6ca0aed-16c7-4d9c-ada9-51332e4f99a5"},
         {"Dataset Name": "Discussion Forums", "SchemaID": "fd57b574-f156-48ef-bc53-670e2b3d0f58", "Full PluginID": "8851ce21-6049-4004-9990-78c372bbd3b7", "Differential PluginID": "1fb4c71f-f9ee-4a71-9448-cf2df83d76f6"},
@@ -2536,7 +2544,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
         {"Dataset Name": "LTI Links", "SchemaID": "7a0d551f-0bbb-4544-a077-e1c427a0e5f3", "Full PluginID": "e00227de-5563-4c89-80f7-c6847eafe6f9", "Differential PluginID": "5d85d8e7-5141-42bc-8855-c25c913feed0"},
         {"Dataset Name": "Local Authentication Security Log", "SchemaID": "66dc53a4-4f62-4235-9727-af59f670f0b5", "Full PluginID": "b8ada4c7-d5d7-4377-bf8a-81718978ba01", "Differential PluginID": "01227024-8c3f-4c63-9498-83d8c4eb85b5"},
         {"Dataset Name": "Media Consumption Log", "SchemaID": "ce26f4a9-098b-40be-8e75-f5f9b8571972", "Full PluginID": "18652288-c12a-48e2-9b22-0556f4c5a2aa", "Differential PluginID": "4c910031-488b-443f-92d2-e94c1e6b21f3"},
-        {"Dataset Name": "Media Objects", "SchemaID": "75c16f2d-a40f-42db-b8a4-314608320ccf", "Full PluginID": "377a2e14-09ba-407d-9836-726c7592a79ab", "Differential PluginID": "c657a528-877d-40d9-b56a-3d3c5cf64ae1"},
+        {"Dataset Name": "Media Objects", "SchemaID": "75c16f2d-a40f-42db-b8a4-314608320ccf", "Full PluginID": "377a2e14-09ba-407d-9836-7267592a79ab", "Differential PluginID": "c657a528-877d-40d9-b56a-3d3c5cf64ae1"},
         {"Dataset Name": "Organizational Unit Ancestors", "SchemaID": "c0b0740f-896e-4afa-bfd9-81d8e43006d9", "Full PluginID": "61726e1b-bf42-4cab-910d-e5a226dec4f0", "Differential PluginID": "42846d2d-cce6-4215-ab21-4228a952a0db"},
         {"Dataset Name": "Organizational Unit Descendants", "SchemaID": "1168c2bc-c734-4727-b53c-062824124e74", "Full PluginID": "2e20f325-6fef-4065-9b5d-1400304611db", "Differential PluginID": "56d9e64a-0076-4fe7-8fd8-2f68feeb6161"},
         {"Dataset Name": "Organizational Unit Parents", "SchemaID": "4ed08e9f-d294-478c-912e-6b0ba4282e4a", "Full PluginID": "cb7caa4a-c35f-48d0-a9ae-59eefea299df", "Differential PluginID": "54be8f9d-b6ec-48e7-a18e-ab17c7fa8d42"},
@@ -2563,6 +2571,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
         {"Dataset Name": "Question Answer Options", "SchemaID": "b3362aa3-f74d-4424-bf38-32c57a4d75a4", "Full PluginID": "005ebd00-00be-4830-8ff4-cb3853312585", "Differential PluginID": "bbeca5be-12b4-4bc8-8280-65ff4042d3fc"},
         {"Dataset Name": "Question Answers", "SchemaID": "0900c10e-1862-4b21-95d1-43eee5e51e1b", "Full PluginID": "faa8bab8-25f9-4921-ade5-becaedc526e8", "Differential PluginID": "a2b2c14e-3ffd-431c-b64f-53b577c781d9"},
         {"Dataset Name": "Question Library", "SchemaID": "c9edec37-1322-44ed-a922-f68d11472f6e", "Full PluginID": "5c0f2c70-4737-44ee-8780-be67bfa43594", "Differential PluginID": "708469f2-92ef-43f3-bdd3-dfef560e3432"},
+        {"Dataset Name": "Question Pools", "SchemaID": "805fd41b-b709-4564-84c5-2a6d2093a2ec", "Full PluginID": "be19be31-7ac6-447d-9090-74e2ad6ad0c5", "Differential PluginID": "b559ebc8-418b-4075-b1d7-b37b36761438"},
         {"Dataset Name": "Question Relationships", "SchemaID": "7a1a456f-3bd9-403e-bf04-a384036da3ae", "Full PluginID": "1a0f6b1d-513c-474c-b7ce-0ee1fbea8d02", "Differential PluginID": "2127ae26-4ec6-4cfa-9dc7-fb741e3fbcfd"},
         {"Dataset Name": "Quiz Attempts", "SchemaID": "a7d6e843-bf8d-4965-9274-95028f3c4d86", "Full PluginID": "f1623581-c5d7-4562-93fe-6ad16010c96b", "Differential PluginID": "d8c9b542-0f2d-4d7e-9774-c07bebe2eff6"},
         {"Dataset Name": "Quiz Attempts Log", "SchemaID": "a8e9249d-3412-4dff-bfd4-758c66fd2f55", "Full PluginID": "d1c3127a-b8a4-48ff-924d-eb5a6ac6a344", "Differential PluginID": "5a0f30dc-4294-4d78-9721-ad6fe0867915"},
@@ -2570,9 +2579,9 @@ def render_dataset_id_reference(df: pd.DataFrame):
         {"Dataset Name": "Quiz Survey Sections", "SchemaID": "560e2992-1633-4770-905f-b2445fe4c0c2", "Full PluginID": "b2cfad85-ab8b-4e0a-a3e3-67495aa2875b", "Differential PluginID": "45c79f1b-3d6f-4f47-a6ec-dc8ac480becc"},
         {"Dataset Name": "Quiz User Answer Responses", "SchemaID": "08d61f34-f5c0-4896-a345-e3941535b4d4", "Full PluginID": "24d9051c-509a-4ea3-81bc-735f36bf94f0", "Differential PluginID": "436b1311-fe12-4939-a678-b2c108110b29"},
         {"Dataset Name": "Quiz User Answers", "SchemaID": "241c5dfb-4807-4f54-a7c4-78fbd7fb2671", "Full PluginID": "93d6063b-61d4-4629-a6af-b4fad71f8c55", "Differential PluginID": "79d6974c-76f7-4bb9-94c3-1fb30c47d0b3"},
-        {"Dataset Name": "Reoffer Course", "SchemaID": "5d73f0ef-55a0-45d0-892b-1c5120e333a7", "Full PluginID": "65514d61-c74c-43b7-a386-58a11f9695ff", "Differential PluginID": "ebcce1cf-a3db-4786-b638-6337c957f7bb"},
         {"Dataset Name": "Release Condition Objects", "SchemaID": "93deef8a-db75-463d-8448-bc7924e241fa", "Full PluginID": "156ff1c7-fbaa-4c61-af19-23682018702d", "Differential PluginID": "2ff23328-8f79-46ed-9d95-fab0107b25a8"},
         {"Dataset Name": "Release Condition Results", "SchemaID": "ed253ac1-c0ec-44f1-89b6-e15cfccaacff", "Full PluginID": "86a481b1-de9d-4e5c-bf06-da03a18c09a5", "Differential PluginID": "2181b243-ac22-4a5c-8c13-a4f1fe808dbd"},
+        {"Dataset Name": "Reoffer Course", "SchemaID": "5d73f0ef-55a0-45d0-892b-1c5120e333a7", "Full PluginID": "65514d61-c74c-43b7-a386-58a11f9695ff", "Differential PluginID": "ebcce1cf-a3db-4786-b638-6337c957f7bb"},
         {"Dataset Name": "Role Details", "SchemaID": "d70f64e0-ad63-4140-aac5-e337560b8371", "Full PluginID": "bd61f20b-be91-4b93-b449-46361e2c323f", "Differential PluginID": "e49a4837-72d7-4175-80d9-bd4dc10bdd08"},
         {"Dataset Name": "Rubric Assessment", "SchemaID": "d197b592-0c59-438c-8186-f42af6fddd35", "Full PluginID": "cd7fa762-841e-48c5-abd7-6379b84963bf", "Differential PluginID": "9e8d3ed5-f0f0-4834-a9e5-b64fe61beada"},
         {"Dataset Name": "Rubric Assessment Criteria", "SchemaID": "7c01ead6-8011-4d04-8b9a-7289b731a9fc", "Full PluginID": "612e3196-52ad-42bd-b460-8b850f7a7be1", "Differential PluginID": "d22a84ac-412e-428a-a094-08d39360e68a"},
@@ -2598,6 +2607,7 @@ def render_dataset_id_reference(df: pd.DataFrame):
         {"Dataset Name": "Survey User Answer Responses", "SchemaID": "54d695fe-1c34-4fae-b1d5-a5923ca933a2", "Full PluginID": "20923295-981b-4d3c-8ab8-aa149abfdb45", "Differential PluginID": "0629be42-9f33-40c2-ad31-03f252b3689f"},
         {"Dataset Name": "Survey User Answers", "SchemaID": "75939752-2645-4fd7-89ff-663881ccf1af", "Full PluginID": "810d9b4e-6f05-4f02-b32d-c86d78999db1", "Differential PluginID": "fade45b2-ea09-4f65-8c2e-cc3a8a6615f5"},
         {"Dataset Name": "System Access Log", "SchemaID": "c3336250-30d1-45bc-809c-7b68b983f305", "Full PluginID": "5813e618-49ec-4e5c-90e7-1fb4fe4b59c6", "Differential PluginID": "a5bd3c98-3582-4232-8ddd-653d5ff7f074"},
+        {"Dataset Name": "System Access Summary", "SchemaID": "c6ac3243-0c00-4e04-823f-483d68ea4d0d", "Full PluginID": "9200879f-d943-47c7-9e20-c5d0bd330707", "Differential PluginID": "d16cebd8-0783-411c-89b6-6010c262544a"},
         {"Dataset Name": "Tools", "SchemaID": "81d4bd50-9db6-495d-93ed-a3dbb6597a61", "Full PluginID": "c437b117-16b3-46b8-bae9-ac64948c8882", "Differential PluginID": "f931c869-db64-4c3c-a564-a3c54fa6598d"},
         {"Dataset Name": "TurnItIn Submissions", "SchemaID": "ac48b6d1-6655-48e4-907b-61c0fdbb37d1", "Full PluginID": "e4b3d080-b4f8-4d6c-abf3-98bf887829bc", "Differential PluginID": "341c1278-f32b-43c7-b29e-db4881a463f4"},
         {"Dataset Name": "User Attribute Definitions", "SchemaID": "0d1f2f4b-1b61-4373-9e33-a99a8d8dbfd9", "Full PluginID": "6fc12759-a014-4aec-8cdb-50ae6ff18530", "Differential PluginID": "1e11923c-267c-400b-bfb5-690ce15b2ff9"},
