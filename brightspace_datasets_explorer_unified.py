@@ -1,8 +1,8 @@
-#   brightspace_datasets_explorer_unified02152026.py, LKG 02152026
+#   brightspace_datasets_explorer_unified02162026.py, LKG 02162026
 # =============================================================================
 # unified brightspace dataset explorer
 # combines the best of all 3 earlier code-bases with simple/advanced modes
-# run: streamlit run brightspace_datasets_explorer_unified02152026.py if running locally
+# run: streamlit run brightspace_datasets_explorer_unified02162026.py if running locally
 # =============================================================================
 
 import streamlit as st
