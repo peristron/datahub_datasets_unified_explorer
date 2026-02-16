@@ -2163,23 +2163,16 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 label_visibility="collapsed"
             )
 
-        # --- Global Clear Button (High Visibility) ---
-        # Positioned right after navigation for easy access
+        # --- MOVED: Global Clear Button (Now visible on ALL tabs) ---
+        # Always active and visible for consistent UX.
         if not df.empty:
-            has_active_state = (
-                len(st.session_state.get('selected_datasets', [])) > 0 or
-                len(st.session_state.get('dataset_multiselect', [])) > 0 or
-                st.session_state.get('path_finder_results') is not None
-            )
-            
             st.button(
                 "🗑️ Clear All Selections & Results",
-                type="primary" if has_active_state else "secondary",
+                type="primary",  # Always red/primary for visibility
                 use_container_width=True,
                 on_click=clear_all_selections,
                 help="Reset selected datasets, graph filters, and Path Finder results."
             )
-
         st.divider()
 
         # data status and scraper - ROBUST VERSION
