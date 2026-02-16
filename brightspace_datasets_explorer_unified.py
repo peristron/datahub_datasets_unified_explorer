@@ -2322,14 +2322,17 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
+            # Determine if there is any active state to clear (Datasets OR Path Finder results)
+            has_active_state = len(selected_datasets) > 0 or 'path_finder_results' in st.session_state
+
             # more prominent "Clear All Selections" button — always visible for better UX
-            if selected_datasets:
+            if has_active_state:
                 st.button(
                     "🗑️ Clear All Selections",
                     type="primary",
                     use_container_width=True,
                     on_click=clear_all_selections,
-                    help="Reset all selected datasets and start fresh"
+                    help="Reset all selected datasets and Path Finder results"
                 )
             else:
                 st.button(
@@ -2337,7 +2340,7 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     type="secondary",
                     use_container_width=True,
                     disabled=True,
-                    help="No selections to clear"
+                    help="No selections or active results to clear"
                 )
 
         # authentication
