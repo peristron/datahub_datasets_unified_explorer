@@ -2327,18 +2327,29 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
         # --- MOVED: Global Clear Button (Now visible on ALL tabs) ---
         if not df.empty:
             # Determine if there is any active state to clear (Datasets OR Path Finder results)
-            has_active_state = len(st.session_state.get('selected_datasets', [])) > 0 or \
-                               len(st.session_state.get('dataset_multiselect', [])) > 0 or \
-                               'path_finder_results' in st.session_state
+            has_active_state = (
+                len(st.session_state.get('selected_datasets', [])) > 0 or
+                len(st.session_state.get('dataset_multiselect', [])) > 0 or
+                st.session_state.get('path_finder_results') is not None
+            )
 
+            st.divider()
+            
             if has_active_state:
-                st.divider()
                 st.button(
                     "🗑️ Clear All Selections & Results",
                     type="primary",
                     use_container_width=True,
                     on_click=clear_all_selections,
-                    help="Reset all selected datasets and clear Path Finder results."
+                    help="Reset all selected datasets and clear Path Finder results"
+                )
+            else:
+                st.button(
+                    "🗑️ Clear All Selections & Results",
+                    type="secondary",
+                    use_container_width=True,
+                    disabled=True,
+                    help="No active selections to clear"
                 )
 
         # authentication
