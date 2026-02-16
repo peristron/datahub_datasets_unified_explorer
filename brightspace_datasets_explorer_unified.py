@@ -2235,6 +2235,8 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
 
         # dataset selection (when applicable)
         selected_datasets: List[str] = []
+        
+        # Only show the detailed selector widgets on specific tabs
         if not df.empty and view in ["🗺️ Relationship Map", "⚡ SQL Builder"]:
             st.divider()
             st.subheader("Dataset Selection")
@@ -2322,25 +2324,21 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                     "Select Datasets:", all_ds, key="dataset_multiselect"
                 )
 
+        # --- MOVED: Global Clear Button (Now visible on ALL tabs) ---
+        if not df.empty:
             # Determine if there is any active state to clear (Datasets OR Path Finder results)
-            has_active_state = len(selected_datasets) > 0 or 'path_finder_results' in st.session_state
+            has_active_state = len(st.session_state.get('selected_datasets', [])) > 0 or \
+                               len(st.session_state.get('dataset_multiselect', [])) > 0 or \
+                               'path_finder_results' in st.session_state
 
-            # more prominent "Clear All Selections" button — always visible for better UX
             if has_active_state:
+                st.divider()
                 st.button(
-                    "🗑️ Clear All Selections",
+                    "🗑️ Clear All Selections & Results",
                     type="primary",
                     use_container_width=True,
                     on_click=clear_all_selections,
-                    help="Reset all selected datasets and Path Finder results"
-                )
-            else:
-                st.button(
-                    "🗑️ Clear All Selections",
-                    type="secondary",
-                    use_container_width=True,
-                    disabled=True,
-                    help="No selections or active results to clear"
+                    help="Reset all selected datasets and clear Path Finder results."
                 )
 
         # authentication
