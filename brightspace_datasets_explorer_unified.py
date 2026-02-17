@@ -2099,6 +2099,7 @@ def generate_pandas(selected_datasets: List[str], df: pd.DataFrame) -> str:
 
     return "\n".join(lines)
 
+
 def render_sidebar(df: pd.DataFrame) -> tuple:
     """renders the sidebar navigation and returns (view, selected_datasets)."""
     with st.sidebar:
@@ -2163,16 +2164,6 @@ def render_sidebar(df: pd.DataFrame) -> tuple:
                 label_visibility="collapsed"
             )
 
-        # --- MOVED: Global Clear Button (Now visible on ALL tabs) ---
-        # Always active and visible for consistent UX.
-        if not df.empty:
-            st.button(
-                "🗑️ Clear All Selections & Results",
-                type="primary",  # Always red/primary for visibility
-                use_container_width=True,
-                on_click=clear_all_selections,
-                help="Reset selected datasets, graph filters, and Path Finder results."
-            )
         st.divider()
 
         # data status and scraper - ROBUST VERSION
@@ -2456,7 +2447,6 @@ This tool attempts to be a sort of...Rosetta Stone for the D2L Data Hub — help
 """)
 
     return view, selected_datasets
-
 
 
 def render_dataset_id_reference(df: pd.DataFrame):
