@@ -123,6 +123,7 @@ DEFAULT_URLS = """
 https://community.d2l.com/brightspace/kb/articles/4539-list-of-advanced-data-sets
 https://community.d2l.com/brightspace/kb/articles/4752-accommodations-data-sets
 https://community.d2l.com/brightspace/kb/articles/4712-activity-feed-data-sets
+https://community.d2l.com/brightspace/kb/articles/34440-ai-consumption-data-sets
 https://community.d2l.com/brightspace/kb/articles/4723-announcements-data-sets
 https://community.d2l.com/brightspace/kb/articles/4767-assignments-data-sets
 https://community.d2l.com/brightspace/kb/articles/4519-attendance-data-sets
@@ -137,6 +138,7 @@ https://community.d2l.com/brightspace/kb/articles/4725-course-copy-data-sets
 https://community.d2l.com/brightspace/kb/articles/4524-course-publisher-data-sets
 https://community.d2l.com/brightspace/kb/articles/26161-creator-data-sets
 https://community.d2l.com/brightspace/kb/articles/4525-discussions-data-sets
+https://community.d2l.com/brightspace/kb/articles/34145-email-data-sets
 https://community.d2l.com/brightspace/kb/articles/4526-exemptions-data-sets
 https://community.d2l.com/brightspace/kb/articles/4527-grades-data-sets
 https://community.d2l.com/brightspace/kb/articles/4528-intelligent-agents-data-sets
